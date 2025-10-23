@@ -8,7 +8,7 @@ class SpatialOperators:
     """
     def __init__(self, Re):
         self.Re = Re
-
+    
     def interpolate_1d(self, w: xp.array, axis: int) -> xp.array:
         r"""
         Perform 1d interpolation of the two-dimensional array :math:`w` along the
@@ -95,7 +95,7 @@ class SpatialOperators:
             This function returns an array of a different size than the
             original input array :math:`w`. If :math:`w` has size :math:`n\times m`,
             the dimension of the output array will be :math:`(n-2)\times (m-2)`.
-
+        
         :rtype: cupy/numpy array
         """
         size = w.shape
@@ -108,4 +108,4 @@ class SpatialOperators:
             dw += self.evaluate_derivative(w, 2, axis)[tuple(slc)]
         return dw / self.Re
     
-    
+

@@ -47,7 +47,10 @@
 <ul class="current">
 <li class="toctree-l1 current"><a class="reference internal" href="api-reference.html">API-reference</a><ul class="current">
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Mesh</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#ibfs.mesh.Mesh"><code class="docutils literal notranslate"><span class="pre">Mesh</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ibfs.mesh.Mesh"><code class="docutils literal notranslate"><span class="pre">Mesh</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#ibfs.mesh.Mesh.info"><code class="docutils literal notranslate"><span class="pre">Mesh.info()</span></code></a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="spatial_operators.html">Spatial Operators</a></li>
@@ -89,9 +92,10 @@
 <p>Holds information on a two-dimensional uniform mesh with <span class="math notranslate nohighlight">\(\Delta = \Delta x = \Delta y\)</span>
 over the spatial domain</p>
 <div class="math notranslate nohighlight">
-\[D = \left[ x_0 - \frac{\Delta}{2}, x_1 + \frac{\Delta}{2} \right] \times
-    \left[ y_0 - \frac{\Delta}{2}, y_1 + \frac{\Delta}{2} \right]\]</div>
-<p>The grid is staggered, so <span class="math notranslate nohighlight">\(x\)</span>-velocities are stored at right/left cell faces,
+\[\Omega = \left[ x_0, x_1 \right] \times \left[ y_0, y_1 \right].\]</div>
+<p>The attributes <code class="code docutils literal notranslate"><span class="pre">self.x</span></code> and <code class="code docutils literal notranslate"><span class="pre">self.y</span></code> contain the coordinates
+of the grid at cell centers.
+The grid is staggered, so <span class="math notranslate nohighlight">\(x\)</span>-velocities are stored at right/left cell faces,
 <span class="math notranslate nohighlight">\(y\)</span>-velocities at top/bottom cell faces, and the pressure is stored
 at cell centers.
 This class also holds two-dimensional arrays to store the <span class="math notranslate nohighlight">\(x\)</span> velocity field,
@@ -99,15 +103,21 @@ This class also holds two-dimensional arrays to store the <span class="math notr
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>x0</strong> (<em>float</em>) – <span class="math notranslate nohighlight">\(x\)</span> location of the left-most cell center</p></li>
-<li><p><strong>x1</strong> (<em>float</em>) – <span class="math notranslate nohighlight">\(x\)</span> location of the right-most cell center</p></li>
+<li><p><strong>x0</strong> (<em>float</em>) – <span class="math notranslate nohighlight">\(x\)</span> location of the left boundary (inflow)</p></li>
+<li><p><strong>x1</strong> (<em>float</em>) – <span class="math notranslate nohighlight">\(x\)</span> location of the right boundary (inflow)</p></li>
 <li><p><strong>nx</strong> (<em>int</em>) – number of cells in the x direction</p></li>
-<li><p><strong>y0</strong> (<em>float</em>) – <span class="math notranslate nohighlight">\(y\)</span> location of the bottom cell center</p></li>
-<li><p><strong>y1</strong> (<em>float</em>) – <span class="math notranslate nohighlight">\(y\)</span> location of the top cell center</p></li>
+<li><p><strong>y0</strong> (<em>float</em>) – <span class="math notranslate nohighlight">\(y\)</span> location of the bottom boundary</p></li>
+<li><p><strong>y1</strong> (<em>float</em>) – <span class="math notranslate nohighlight">\(y\)</span> location of the top boundary</p></li>
 <li><p><strong>ny</strong> (<em>int</em>) – number of cells in the y direction</p></li>
 </ul>
 </dd>
 </dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="ibfs.mesh.Mesh.info">
+<span class="sig-name descname"><span class="pre">info</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ibfs/mesh.html#Mesh.info"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ibfs.mesh.Mesh.info" title="Link to this definition"></a></dt>
+<dd><p>Print basic information about the mesh.</p>
+</dd></dl>
+
 </dd></dl>
 
 </section>

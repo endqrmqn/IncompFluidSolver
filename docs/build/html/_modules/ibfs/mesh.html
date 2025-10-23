@@ -82,24 +82,25 @@
 
 <span class="sd">    .. math::</span>
 
-<span class="sd">        D = \left[ x_0 - \frac{\Delta}{2}, x_1 + \frac{\Delta}{2} \right] \times</span>
-<span class="sd">            \left[ y_0 - \frac{\Delta}{2}, y_1 + \frac{\Delta}{2} \right]</span>
+<span class="sd">        \Omega = \left[ x_0, x_1 \right] \times \left[ y_0, y_1 \right].</span>
 
+<span class="sd">    The attributes :code:`self.x` and :code:`self.y` contain the coordinates</span>
+<span class="sd">    of the grid at cell centers.</span>
 <span class="sd">    The grid is staggered, so :math:`x`-velocities are stored at right/left cell faces,</span>
 <span class="sd">    :math:`y`-velocities at top/bottom cell faces, and the pressure is stored</span>
 <span class="sd">    at cell centers.</span>
 <span class="sd">    This class also holds two-dimensional arrays to store the :math:`x` velocity field,</span>
 <span class="sd">    :math:`y` velocity field and the pressure.</span>
 
-<span class="sd">    :param x0: :math:`x` location of the left-most cell center</span>
+<span class="sd">    :param x0: :math:`x` location of the left boundary (inflow)</span>
 <span class="sd">    :type x0: float</span>
-<span class="sd">    :param x1: :math:`x` location of the right-most cell center</span>
+<span class="sd">    :param x1: :math:`x` location of the right boundary (inflow)</span>
 <span class="sd">    :type x1: float</span>
 <span class="sd">    :param nx: number of cells in the x direction</span>
 <span class="sd">    :type nx: int</span>
-<span class="sd">    :param y0: :math:`y` location of the bottom cell center</span>
+<span class="sd">    :param y0: :math:`y` location of the bottom boundary</span>
 <span class="sd">    :type y0: float</span>
-<span class="sd">    :param y1: :math:`y` location of the top cell center</span>
+<span class="sd">    :param y1: :math:`y` location of the top boundary</span>
 <span class="sd">    :type y1: float</span>
 <span class="sd">    :param ny: number of cells in the y direction</span>
 <span class="sd">    :type ny: int</span>
@@ -116,15 +117,35 @@
                 <span class="sa">f</span><span class="s2">&quot;dx and dy should be the same. Currently &quot;</span>
                 <span class="sa">f</span><span class="s2">&quot;dx = </span><span class="si">{</span><span class="n">dx</span><span class="si">}</span><span class="s2"> and dy = </span><span class="si">{</span><span class="n">dy</span><span class="si">}</span><span class="s2">&quot;</span>
             <span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">dx</span> <span class="o">*</span> <span class="n">xp</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">nx</span><span class="p">)</span> <span class="o">+</span> <span class="n">x0</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">dy</span> <span class="o">*</span> <span class="n">xp</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">ny</span><span class="p">)</span> <span class="o">+</span> <span class="n">y0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">dx</span> <span class="o">*</span> <span class="n">xp</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">nx</span><span class="p">)</span> <span class="o">+</span> <span class="n">x0</span> <span class="o">+</span> <span class="n">dx</span> <span class="o">/</span> <span class="mi">2</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">dy</span> <span class="o">*</span> <span class="n">xp</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">ny</span><span class="p">)</span> <span class="o">+</span> <span class="n">y0</span> <span class="o">+</span> <span class="n">dy</span> <span class="o">/</span> <span class="mi">2</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">d</span> <span class="o">=</span> <span class="n">dx</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">p</span> <span class="o">=</span> <span class="n">xp</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">)))</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">u_ext</span> <span class="o">=</span> <span class="n">xp</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">)</span> <span class="o">+</span> <span class="mi">2</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">v_ext</span> <span class="o">=</span> <span class="n">xp</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">)</span> <span class="o">+</span> <span class="mi">2</span><span class="p">))</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">u_int</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">u_ext</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">v_int</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">v_ext</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">v_int</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">v_ext</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+<div class="viewcode-block" id="Mesh.info">
+<a class="viewcode-back" href="../../mesh.html#ibfs.mesh.Mesh.info">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Print basic information about the mesh.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="n">nx</span><span class="p">,</span> <span class="n">ny</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">)</span>
+        <span class="n">Lx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">d</span>
+        <span class="n">Ly</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">d</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Mesh Information&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;-&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;x domain     : [</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="o">/</span><span class="mi">2</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="o">/</span><span class="mi">2</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">]&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;y domain     : [</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="o">/</span><span class="mi">2</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="o">/</span><span class="mi">2</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">]&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Grid points  : nx = </span><span class="si">{</span><span class="n">nx</span><span class="si">}</span><span class="s2">, ny = </span><span class="si">{</span><span class="n">ny</span><span class="si">}</span><span class="s2">, nx * ny = </span><span class="si">{</span><span class="n">nx</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">ny</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Grid spacing : Δx = Δy = </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="si">:</span><span class="s2">.4e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;-&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span></div>
+</div>
 
 </pre></div>
 

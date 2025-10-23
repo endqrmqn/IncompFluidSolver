@@ -1,0 +1,52 @@
+[build-system]
+# Specifies the build system to use
+requires = ["setuptools>=42.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ibfs"
+version = "0.0.1"
+description = """\
+  Incompressible flow solver with immersed boundary.\
+"""
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = [
+  "fluid dynamics",
+]
+authors = [
+    { name = "Alberto Padovan", email = "alberto.padovan.94@gmail.com" },
+]
+requires-python = ">=3.9"
+readme = { file = "README.md", content-type = "text/markdown" }
+dependencies = ["numpy", "scipy", "matplotlib"]
+
+[project.optional-dependencies]
+docs = [
+  "sphinx",
+  "sphinx-rtd-theme",
+  "sphinx-gallery",
+  "sphinxcontrib-bibtex",
+]
+
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 79
+target-version = "py39"
+lint.extend-select = ["I", "UP", "B"]
+lint.ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "cpu: marks tests on cpu",
+    "gpu: marks tests on gpu",
+]
+python_files = ["test_*.py"]
+addopts = "-ra -v"
