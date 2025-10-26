@@ -77,7 +77,7 @@ class SpatialOperators:
             else (w[tuple(slc1)] - 2 * w + w[tuple(slc0)]) / (mesh.d**2)
         )
 
-    def evaluate_viscous_term(self, w: xp.array) -> xp.array:
+    def evaluate_viscous_term(self, mesh, w: xp.array) -> xp.array:
         r"""
         Compute 
 
@@ -98,14 +98,14 @@ class SpatialOperators:
         
         :rtype: cupy/numpy array
         """
-        size = w.shape
-        size = (size[0] - 2, size[1] - 2)
-        dw = xp.zeros(size, dtype=w.type)
-        for axis in range (2):
-            other_axis = xp.abs(axis - 1)
-            slc = [slice(None)] * w.ndim
-            slc[other_axis] = slice(1, -1)
-            dw += self.evaluate_derivative(w, 2, axis)[tuple(slc)]
-        return dw / self.Re
+        nx, ny = w.shape
+        dw = xp.zeros((nx - 2, ny - 2), dtype=w.dtype)
+
+        d2wdx2 = (w[2:, 1:-1] - 2 * w[1:-1, 1:-1] + w[:-2, 1:-1]) / (mesh.d ** 2)
+
+        d2wdy2 = (w[1:-1, 2:] - 2 * w[1:-1, 1:-1] + w[1:-1, :-2]) / (mesh.d ** 2)
+
+        dw = (d2wdx2 + d2wdy2) / self.Re
+        return dw
     
 
