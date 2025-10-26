@@ -2,6 +2,9 @@ import torch                                #type: ignore
 import numpy as np                          #type: ignore
 from ibfs import Mesh, SpatialOperators     #type: ignore
 
+#print(torch.__version__)
+#print(np.__version__)
+
 x0 = -5
 x1 = 10
 nx = 150
