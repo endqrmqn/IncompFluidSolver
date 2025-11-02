@@ -72,7 +72,7 @@ class SpatialOperators:
         slc1[axis] = slice(1, None) # Slice from 1 to end in axis direction
 
         return (
-            (w[tuple(slc1)] - w[tuple(slc0)]) / (2 * mesh.d)
+            (w[tuple(slc1)] - w[tuple(slc0)]) / (mesh.d)
             if order == 1
             else (w[tuple(slc1)] - 2 * w + w[tuple(slc0)]) / (mesh.d**2)
         )
