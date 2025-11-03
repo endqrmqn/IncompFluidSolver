@@ -137,25 +137,31 @@ The equations will be spatially discretized using finite volumes on a fully stag
 \label{fig:grid_x}
 \end{figure}
 
+For this derivation we will refer to figure \ref{fig:grid_x}.
+Let the location of the top and bottom faces of the shaded box be $y_t$ and $y_b$.
+Similarly, let the location of the right and left faces be $x_r$ and $x_l$.
 Starting from equation \eqref{eq:ns_equation} in the $x$ direction, we have
 \begin{equation}
-  \int _{\mathcal{V}} \partial_t u\, \mathrm{d}\mathcal{V} + \int_{\mathcal{Y}} u^2\,\mathrm{d}\mathcal{Y} +\int_{\mathcal{X}} uv\,\mathrm{d}\mathcal{X}  =  - \int _{\mathcal{Y}} p\, \mathrm{d}\mathcal{Y} + Re^{-1}\left(\int_{\mathcal{Y}} \partial_x u\,\mathrm{d}\mathcal{Y} + \int_{\mathcal{X}} \partial_y u\,\mathrm{d}\mathcal{X}\right).
+  \begin{aligned}
+    &\int _{\mathcal{V}} \partial_t u\, \mathrm{d}\mathcal{V} + \int_{\mathcal{Y}} u^2(x_r) - u^2(x_l)\,\mathrm{d}\mathcal{Y} + \int_{\mathcal{X}} (uv)(y_t) - (uv)(y_b)\,\mathrm{d}\mathcal{X}  =  \\
+    &- \int _{\mathcal{Y}} p(x_r) - p(x_l)\, \mathrm{d}\mathcal{Y} + Re^{-1}\left(\int_{\mathcal{Y}} (\partial_x u)(x_r) - (\partial_x u)(x_l)\,\mathrm{d}\mathcal{Y} + \int_{\mathcal{X}} (\partial_y u)(y_t) - (\partial_y u)(y_b)\,\mathrm{d}\mathcal{X}\right).
+  \end{aligned}
 \end{equation}
 In discrete form, using the control volume in figure \ref{fig:grid_x}, we have
 \begin{equation}
   \begin{aligned}
     \int _{\mathcal{V}} \partial_t u\, \mathrm{d}\mathcal{V} &= \partial_t u_{i,j}\Delta x \Delta y\\
-    \int_{\mathcal{Y}} u^2\,\mathrm{d}\mathcal{Y} &= \frac{\Delta y}{4}\left(\left(u_{i,j+1} + u_{i,j}\right)^2 - \left(u_{i,j+1} + u_{i,j}\right)^2\right) \\
-    \int_{\mathcal{X}} uv\,\mathrm{d}\mathcal{X} &= \frac{\Delta x}{4}\left(\left(u_{i+1,j} + u_{i,j}\right)\left(v_{i,j} + v_{i,j+1}\right) - \left(u_{i-1,j} + u_{i,j}\right)\left(v_{i-1,j} + v_{i-1,j+1}\right)\right)\\
-    \int _{\mathcal{Y}} p\, \mathrm{d}\mathcal{Y} &= \left(p_{i-1,j} - p_{i-1,j-1}\right)\Delta y \\
-    Re^{-1}\int_{\mathcal{Y}} \partial_x u\,\mathrm{d}\mathcal{Y} &= \frac{Re^{-1}}{\Delta x}\left(u_{i,j+1} - 2 u_{i,j} + u_{i,j-1}\right)\Delta y \\
-    Re^{-1}\int_{\mathcal{X}} \partial_y u\,\mathrm{d}\mathcal{X} &= \frac{Re^{-1}}{\Delta y}\left(u_{i+1,j} - 2 u_{i,j} + u_{i-1,j}\right)\Delta x
+    \int_{\mathcal{Y}} u^2(x_r) - u^2(x_l)\,\mathrm{d}\mathcal{Y} &= \frac{\Delta y}{4}\left(\left(u_{i,j+1} + u_{i,j}\right)^2 - \left(u_{i,j-1} + u_{i,j}\right)^2\right) \\
+    \int_{\mathcal{X}} (uv)(y_t) - (uv)(y_b)\,\mathrm{d}\mathcal{X} &= \frac{\Delta x}{4}\left(\left(u_{i+1,j} + u_{i,j}\right)\left(v_{i,j} + v_{i,j+1}\right) - \left(u_{i-1,j} + u_{i,j}\right)\left(v_{i-1,j} + v_{i-1,j+1}\right)\right)\\
+    \int _{\mathcal{Y}} p(x_r) - p(x_l)\, \mathrm{d}\mathcal{Y} &= \left(p_{i-1,j} - p_{i-1,j-1}\right)\Delta y \\
+    Re^{-1}\int_{\mathcal{Y}} (\partial_x u)(x_r) - (\partial_x u)(x_l)\,\mathrm{d}\mathcal{Y} &= \frac{Re^{-1}}{\Delta x}\left(u_{i,j+1} - 2 u_{i,j} + u_{i,j-1}\right)\Delta y \\
+    Re^{-1}\int_{\mathcal{X}} (\partial_y u)(y_t) - (\partial_y u)(y_b)\,\mathrm{d}\mathcal{X} &= \frac{Re^{-1}}{\Delta y}\left(u_{i+1,j} - 2 u_{i,j} + u_{i-1,j}\right)\Delta x
   \end{aligned}
 \end{equation}
 Putting this all together and dividing through by $\Delta x \Delta y$, we obtain
 
 \begin{empheq}[box=\widefbox]{align*}
-  &\partial_t u_{i,j} + \frac{1}{4\Delta x}\left(\left(u_{i,j+1} + u_{i,j}\right)^2 - \left(u_{i,j+1} + u_{i,j}\right)^2\right) \\
+  &\partial_t u_{i,j} + \frac{1}{4\Delta x}\left(\left(u_{i,j+1} + u_{i,j}\right)^2 - \left(u_{i,j-1} + u_{i,j}\right)^2\right) \\
   &+ \frac{1}{4\Delta y}\left(\left(u_{i+1,j} + u_{i,j}\right)\left(v_{i,j} + v_{i,j+1}\right) - \left(u_{i-1,j} + u_{i,j}\right)\left(v_{i-1,j} + v_{i-1,j+1}\right)\right)\\
   &= -\frac{p_{i-1,j} - p_{i-1,j-1}}{\Delta x} + Re^{-1}\left(\frac{u_{i,j+1} - 2 u_{i,j} + u_{i,j-1}}{\Delta x^2} + \frac{u_{i+1,j} - 2 u_{i,j} + u_{i-1,j}}{\Delta y^2}\right).
 \end{empheq}
