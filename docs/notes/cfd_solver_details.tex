@@ -199,7 +199,33 @@ Putting this all together and dividing through by $\Delta x \Delta y$, we obtain
 \end{figure}
 
 
-\textcolor{red}{Adi, please derive the y momentum equation like I derived the x momentum equation in the previous subsection.}
+We may recognize that the $y$-momentum is functionally symmetric to the $x$-momentum. It therefore follows that Equation \eqref{eq:ns_equation} allows us to obtain
+
+\begin{align}
+  \underbrace{\int _{\mathcal{V}} \partial_t v\, \mathrm{d}\mathcal{V}}_\mathrm A + \underbrace{\int_{\mathcal{Y}} v^2\,\mathrm{d}\mathcal{Y}}_\mathrm B +
+  \underbrace{\int_{\mathcal{X}} uv\,\mathrm{d}\mathcal{X}}_\mathrm C  =  
+  -\underbrace{\int _{\mathcal{X}} p\, \mathrm{d}\mathcal{X}}_\mathrm D + \underbrace{Re^{-1}\left(\int_{\mathcal{Y}} \partial_x v\,\mathrm{d}\mathcal{Y} + \int_{\mathcal{X}} \partial_y v\,\mathrm{d}\mathcal{X}\right)}_\mathrm E.
+\end{align}
+
+Using the same discretization steps, we may integrate and divide by $\Delta x\Delta y$ as to obtain
+
+\begin{align}
+  \begin{split}
+    &\quad\partial_t v_{i,j}\\ 
+    &+ \frac{1}{4\Delta y}\left[\left(v_{i,j+1} + v_{i,j}\right)^2 - \left(v_{i,j} + v_{i,j-1}\right)^2\right] \\
+    &+ \frac{1}{4\Delta x}\left[\left(u_{i+1,j} + u_{i,j}\right)\left(v_{i,j} + v_{i+1,j}\right)
+    - \left(u_{i-1,j} + u_{i,j}\right)\left(v_{i-1,j} + v_{i,j}\right)\right] \\
+    &= -\frac{p_{i,j+1} - p_{i,j}}{\Delta y}
+    + Re^{-1}\left(\frac{v_{i+1,j} - 2v_{i,j} + v_{i-1,j}}{\Delta x^2}
+    + \frac{v_{i,j+1} - 2v_{i,j} + v_{i,j-1}}{\Delta y^2}\right)
+  \end{split}
+  \label{eq:y_momentum}
+\end{align}
+
+
+
+% couple indexing issues that i should probablyyyy look at? my derivations differ slightly from alby's
+
 
 \subsection{Continuity equation}
 \begin{figure}[H]
