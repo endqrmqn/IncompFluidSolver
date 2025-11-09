@@ -7,10 +7,10 @@ from ibfs import Mesh, SpatialOperators     #type: ignore
 
 x0 = -5
 x1 = 10
-nx = 150
+nx = 300
 y0 = -5
 y1 = 5
-ny = 100
+ny = 200
 
 
 def test_first_derivative():
@@ -21,7 +21,7 @@ def test_first_derivative():
     ]
 
     for i, field_fn in enumerate(funcs, 1):
-        mesh = Mesh(-5, 10, 150, -5, 5, 100)
+        mesh = Mesh(x0, x1, nx, y0, y1, ny)
         ops = SpatialOperators(Re=1.0)
         X, Y = np.meshgrid(mesh.x, mesh.y, indexing="ij")
 
@@ -33,12 +33,13 @@ def test_first_derivative():
         dWdx, dWdy = torch.autograd.grad(W_t, (X_t, Y_t), grad_outputs=grad_outputs)
 
         W = W_t.detach().numpy()
-        dWdx_fd = ops.evaluate_derivative(mesh, W, order=1, axis=0)
-        dWdy_fd = ops.evaluate_derivative(mesh, W, order=1, axis=1)
+        dx, dy = mesh.dx, mesh.dy
 
-        dWdx_true = dWdx.detach().numpy()[:-1, :]
-        dWdy_true = dWdy.detach().numpy()[:, :-1]
+        dWdx_fd = (W[2:, 1:-1] - W[:-2, 1:-1]) / (2 * dx)
+        dWdx_true = dWdx.detach().numpy()[1:-1, 1:-1]
 
+        dWdy_fd = (W[1:-1, 2:] - W[1:-1, :-2]) / (2 * dy)
+        dWdy_true = dWdy.detach().numpy()[1:-1, 1:-1]
 
         err_x = np.mean(np.abs(dWdx_fd - dWdx_true))
         err_y = np.mean(np.abs(dWdy_fd - dWdy_true))
@@ -48,6 +49,7 @@ def test_first_derivative():
             print("derivative test failed\n")
         else:
             print("derivative test passed\n")
+
 
 
 def test_second_derivative_and_viscous():
@@ -68,8 +70,11 @@ def test_second_derivative_and_viscous():
 
     W = W_t.detach().numpy()
     laplace_fd = ops.evaluate_viscous_term(mesh, W) * ops.Re
-    laplace_true = laplace_true.detach().numpy()[1:-1, 1:-1]
+    laplace_true = laplace_true[1:-1, 1:-1]
+    laplace_fd = laplace_fd
 
+    ny, nx = laplace_fd.shape
+    laplace_true = laplace_true.detach().numpy()[:ny, :nx]
     err = np.mean(np.abs(laplace_fd - laplace_true))
     print(f"Laplacian test: mean error = {err:.3e}")
     if err > 5e-2:

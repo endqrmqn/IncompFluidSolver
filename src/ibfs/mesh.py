@@ -53,6 +53,10 @@ class Mesh:
         self.v_ext = xp.zeros((len(self.y) + 1, len(self.x) + 2))
         self.u_int = self.u_ext[1:-1, 1:-1]
         self.v_int = self.v_ext[1:-1, 1:-1]
+        
+        self.dx = dx
+        self.dy = dy
+
 
     def info(self):
         r"""
