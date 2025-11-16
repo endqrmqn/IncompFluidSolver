@@ -228,10 +228,10 @@ Using the same discretization steps, we may integrate and divide by $\Delta x\De
     \Big)\\
   + &\frac{1}{4\Delta x}
     \Big(
-      (u_{i,j+1}+u_{i,j})(v_{i,j+1}+v_{i,j})
-      - (u_{i,j-1}+u_{i,j})(v_{i,j-1}+v_{i,j})
+      (u_{i+1,j}+u_{i,j})(v_{i,j+1}+v_{i,j})
+      - (u_{i+1,j-1}+u_{i,j-1})(v_{i,j-1}+v_{i,j})
     \Big) \\
-  = -\,&\frac{p_{i+1,j}-p_{i-1,j}}{\Delta y}
+  = -\,&\frac{p_{i,j-1}-p_{i-1,j-1}}{\Delta y}
    \;+\; Re^{-1}\!
     \left(
       \frac{v_{i,j+1}-2v_{i,j}+v_{i,j-1}}{\Delta x^2}
