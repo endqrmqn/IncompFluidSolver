@@ -1,0 +1,81 @@
+=== IncompFluidSolver Test Log ===
+Timestamp: 2025-11-16_05-12-57
+
+Test 1: mean |∂w/∂x| error = 2.677e-04, |∂w/∂y| error = 2.709e-04
+derivative test passed
+
+Test 2: mean |∂w/∂x| error = 1.343e-03, |∂w/∂y| error = 4.545e-03
+derivative test passed
+
+Test 3: mean |∂w/∂x| error = 1.073e-05, |∂w/∂y| error = 9.825e-06
+derivative test passed
+
+Test 4: mean |∂w/∂x| error = 2.826e-14, |∂w/∂y| error = 6.288e-03
+derivative test failed
+
+Test 5: mean |∂w/∂x| error = 1.250e-03, |∂w/∂y| error = 4.900e-03
+derivative test passed
+
+Test 6: mean |∂w/∂x| error = 3.842e-05, |∂w/∂y| error = 3.838e-05
+derivative test passed
+
+Test 7: mean |∂w/∂x| error = 6.021e-14, |∂w/∂y| error = 5.611e-14
+derivative test passed
+
+Test 8: mean |∂w/∂x| error = 5.785e-03, |∂w/∂y| error = 2.240e-02
+derivative test failed
+
+Test 9: mean |∂w/∂x| error = 1.569e-05, |∂w/∂y| error = 2.908e-04
+derivative test passed
+
+Test 10: mean |∂w/∂x| error = 2.666e-05, |∂w/∂y| error = 2.658e-05
+derivative test passed
+
+Test 11: mean |∂w/∂x| error = 1.623e-03, |∂w/∂y| error = 6.258e-06
+derivative test passed
+
+Test 12: mean |∂w/∂x| error = 1.360e-05, |∂w/∂y| error = 1.701e-06
+derivative test passed
+
+Test 13: mean |∂w/∂x| error = 1.741e-04, |∂w/∂y| error = 1.612e-04
+derivative test passed
+
+Laplacian test 1: mean |∇²w| error = 6.759e-04
+viscous-term test passed
+
+Laplacian test 2: mean |∇²w| error = 3.111e-02
+viscous-term test passed
+
+Laplacian test 3: mean |∇²w| error = 3.626e-05
+viscous-term test passed
+
+Laplacian test 4: mean |∇²w| error = 4.335e-03
+viscous-term test passed
+
+Laplacian test 5: mean |∇²w| error = 4.000e-03
+viscous-term test passed
+
+Laplacian test 6: mean |∇²w| error = 4.326e-04
+viscous-term test passed
+
+Laplacian test 7: mean |∇²w| error = 7.847e-13
+viscous-term test passed
+
+Laplacian test 8: mean |∇²w| error = 7.524e-02
+viscous-term test failed
+
+Laplacian test 9: mean |∇²w| error = 1.467e-03
+viscous-term test passed
+
+Laplacian test 10: mean |∇²w| error = 2.998e-04
+viscous-term test passed
+
+Laplacian test 11: mean |∇²w| error = 1.546e-02
+viscous-term test passed
+
+Laplacian test 12: mean |∇²w| error = 3.209e-05
+viscous-term test passed
+
+Laplacian test 13: mean |∇²w| error = 7.044e-04
+viscous-term test passed
+

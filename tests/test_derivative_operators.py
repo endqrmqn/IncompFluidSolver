@@ -2,6 +2,8 @@ import torch                                #type: ignore
 import numpy as np                          #type: ignore
 from ibfs import Mesh, SpatialOperators     #type: ignore
 
+TEST_LOG = []
+
 #print(torch.__version__)
 #print(np.__version__)
 
@@ -150,10 +152,14 @@ def test_first_derivative(funcs = [
         err_x = np.mean(np.abs(dWdx_fd - dWdx_true))
         err_y = np.mean(np.abs(dWdy_fd - dWdy_true))
 
-        print(f"Test {i}: mean |∂w/∂x| error = {err_x:.3e}, |∂w/∂y| error = {err_y:.3e}")
+        msg = f"Test {i}: mean |∂w/∂x| error = {err_x:.3e}, |∂w/∂y| error = {err_y:.3e}"
+        TEST_LOG.append(msg)
+        print(msg)
         if err_x > 5e-3 or err_y > 5e-3:
+            TEST_LOG.append("derivative test failed\n")
             print("derivative test failed\n")
         else:
+            TEST_LOG.append("derivative test passed\n")
             print("derivative test passed\n")
             
             
@@ -249,15 +255,39 @@ def test_second_derivative_and_viscous(funcs = [
         laplace_true = laplace_true[:ny_fd, :nx_fd]
 
         err = np.mean(np.abs(laplace_fd - laplace_true))
-        print(f"Laplacian test {i}: mean |∇²w| error = {err:.3e}")
-
+        msg = f"Laplacian test {i}: mean |∇²w| error = {err:.3e}"
+        TEST_LOG.append(msg)
+        print(msg)
         if err > 5e-2:
+            TEST_LOG.append("viscous-term test failed\n")
             print("viscous-term test failed\n")
         else:
+            TEST_LOG.append("viscous-term test passed\n")
             print("viscous-term test passed\n")
+
+
+import datetime
+import os
+
+def write_log():
+    log_dir = os.path.join(os.path.dirname(__file__), "logs")
+    os.makedirs(log_dir, exist_ok=True)
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    filename = f"test_log_{timestamp}.txt"
+    path = os.path.join(log_dir, filename)
+
+    with open(path, "w") as f:
+        f.write("=== IncompFluidSolver Test Log ===\n")
+        f.write(f"Timestamp: {timestamp}\n\n")
+        for line in TEST_LOG:
+            f.write(line + "\n")
+
+    print(f"\nExported test log to: {path}")
+
 
 
 if __name__ == "__main__":
     print("Running derivative operator tests...\n")
     test_first_derivative()
     test_second_derivative_and_viscous()
+    write_log()
