@@ -58,15 +58,19 @@ class Mesh:
         r"""
         Print basic information about the mesh.
         """
-        
+
         nx, ny = len(self.x), len(self.y)
         Lx = self.x[-1] - self.x[0] + self.d
         Ly = self.y[-1] - self.y[0] + self.d
 
         print("Mesh Information")
         print("-" * 60)
-        print(f"x domain     : [{self.x[0]-self.d/2:.4f}, {self.x[-1]+self.d/2:.4f}]")
-        print(f"y domain     : [{self.y[0]-self.d/2:.4f}, {self.y[-1]+self.d/2:.4f}]")
+        print(
+            f"x domain     : [{self.x[0] - self.d / 2:.4f}, {self.x[-1] + self.d / 2:.4f}]"
+        )
+        print(
+            f"y domain     : [{self.y[0] - self.d / 2:.4f}, {self.y[-1] + self.d / 2:.4f}]"
+        )
         print(f"Grid points  : nx = {nx}, ny = {ny}, nx * ny = {nx * ny}")
         print(f"Grid spacing : Δx = Δy = {self.d:.4e}")
         print("-" * 60)
