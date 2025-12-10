@@ -1,5 +1,6 @@
 import numpy as xp
 import scipy as sp
+import torch
 
 
 class Mesh:
@@ -48,11 +49,17 @@ class Mesh:
         self.y = dy * xp.arange(ny) + y0 + dy / 2
         self.d = dx
 
+        # Pressure field
         self.p = xp.zeros((len(self.y), len(self.x)))
+        # Streamwise velocity field (including and excluding boundaries)
         self.u_ext = xp.zeros((len(self.y) + 2, len(self.x) + 1))
-        self.v_ext = xp.zeros((len(self.y) + 1, len(self.x) + 2))
         self.u_int = self.u_ext[1:-1, 1:-1]
+        # Wall-normal velocity field (including and excluding boundaries)
+        self.v_ext = xp.zeros((len(self.y) + 1, len(self.x) + 2))
         self.v_int = self.v_ext[1:-1, 1:-1]
+        # Streamwise and wall-normal volumetric forcing
+        self.fx_int = self.u_int.copy()
+        self.fy_int = self.v_int.copy()
 
     def info(self):
         r"""
@@ -74,3 +81,32 @@ class Mesh:
         print(f"Grid points  : nx = {nx}, ny = {ny}, nx * ny = {nx * ny}")
         print(f"Grid spacing : Δx = Δy = {self.d:.4e}")
         print("-" * 60)
+
+    def generate_meshgrids(self, output_torch=False):
+        x0 = self.x[0] - self.d / 2
+        x1 = self.x[-1] + self.d / 2
+        y0 = self.y[0] - self.d / 2
+        y1 = self.y[-1] + self.d / 2
+
+        xu = xp.arange(x0, x1 + self.d / 2, self.d)
+        yu = xp.arange(y0 - self.d / 2, y1 + self.d, self.d)
+        Xu, Yu = xp.meshgrid(xu, yu)
+        assert Xu.shape == self.u_ext.shape
+        assert Yu.shape == self.u_ext.shape
+
+        xv = xp.arange(x0 - self.d / 2, x1 + self.d, self.d)
+        yv = xp.arange(y0, y1 + self.d / 2, self.d)
+        Xv, Yv = xp.meshgrid(xv, yv)
+        assert Xv.shape == self.v_ext.shape
+        assert Yv.shape == self.v_ext.shape
+
+        Xp, Yp = xp.meshgrid(self.x, self.y)
+
+        xp_tensors = [Xu, Yu, Xv, Yv, Xp, Yp]
+        if output_torch:
+            torch_tensors = [
+                torch.tensor(t, requires_grad=True) for t in xp_tensors
+            ]
+            return xp_tensors, torch_tensors
+        else:
+            return xp_tensors
