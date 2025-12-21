@@ -1,3 +1,0 @@
-=== IncompFluidSolver Test Log ===
-Timestamp: 2025-12-08_01-08-30
-
