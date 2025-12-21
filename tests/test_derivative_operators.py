@@ -2,6 +2,8 @@ import torch                                #type: ignore
 import numpy as np                          #type: ignore
 from ibfs import Mesh, SpatialOperators     #type: ignore
 
+from matplotlib import pyplot as plt         #type: ignore
+
 TEST_LOG = []
 
 #print(torch.__version__)
@@ -33,13 +35,6 @@ TEST_LOG = []
     
 """
 
-x0 = -5
-x1 = 10
-nx = 150
-y0 = -5
-y1 = 5
-ny = 100
-
 
 def test_first_derivative(funcs = [
     lambda X, Y: torch.sin(X) + torch.cos(Y),
@@ -55,7 +50,14 @@ def test_first_derivative(funcs = [
     lambda X, Y: torch.exp(-0.1*(X**2 + Y**2)) * torch.sin(3*X),
     lambda X, Y: torch.nn.functional.softplus(X + 0.5*Y),
     lambda X, Y: torch.sin(X) * torch.sin(Y),
-    ]):
+    ],
+    x0 = -5,
+    x1 = 10,
+    nx = 300,
+    y0 = -5,
+    y1 = 5,
+    ny = 200
+    ):
     
     """
     First-derivative consistency test between:
@@ -177,7 +179,15 @@ def test_second_derivative_and_viscous(funcs = [
     lambda X, Y: torch.exp(-0.1*(X**2 + Y**2)) * torch.sin(3*X),
     lambda X, Y: torch.nn.functional.softplus(X + 0.5*Y),
     lambda X, Y: torch.sin(X) * torch.sin(Y),
-    ]):
+    ],
+    x0 = -5,
+    x1 = 10,
+    nx = 300,
+    y0 = -5,
+    y1 = 5,
+    ny = 200
+    ):
+    
     """
     Second-derivative / viscous-term consistency test between:
 
@@ -266,6 +276,69 @@ def test_second_derivative_and_viscous(funcs = [
             print("viscous-term test passed\n")
 
 
+def convergence_test():
+    """
+    Checks to see if first derivative test decays at O(dx^2)
+    """
+    
+    grid_list = [
+        (60, 40),
+        (90, 60),
+        (120, 80),
+        (180, 120),
+        (240, 160),
+    ]
+
+    dxs = []
+    errs = []
+
+    for (nx, ny) in grid_list:
+        logs_before = len(TEST_LOG)
+
+        test_first_derivative(
+            funcs=[lambda X, Y: torch.sin(X) + torch.cos(Y)],  # smooth
+            x0=-5, x1=10, nx=nx,
+            y0=-5, y1=5,  ny=ny
+        )
+        last_log = TEST_LOG[-2]
+        err_x_str = last_log.split("error =")[1].split(",")[0]
+        err_x = float(err_x_str)
+
+        dx = (10 - (-5)) / nx
+
+        dxs.append(dx)
+        errs.append(err_x)
+
+        print(f"nx={nx}, dx={dx:.4f}, err={err_x:.3e}")
+
+    # -----------------------------
+    # compute log–log slope
+    # -----------------------------
+    log_dx = np.log(np.array(dxs))
+    log_err = np.log(np.array(errs))
+    slope, _ = np.polyfit(log_dx, log_err, 1)
+    
+    plt.figure()
+    plt.loglog(dxs, errs, 'o-', label='Error')
+    plt.loglog(dxs, np.exp(np.polyval([slope, log_err[0] - slope*log_dx[0]], log_dx)), 'r--', label=f'O(dx^{slope:.2f})')
+    plt.xlabel('Grid Spacing (dx)')
+    plt.ylabel('Mean Absolute Error')
+    plt.title('Convergence of First Derivative Error')
+    plt.legend()
+    plt.grid(True, which="both", ls="--")
+    plt.savefig("convergence_test.png")
+    plt.close()
+
+    TEST_LOG.append("\n--- Convergence Summary ---")
+    TEST_LOG.append(f"Estimated order: {slope:.3f}")
+    print("\n--- Convergence Summary ---")
+    print(f"Estimated order: {slope:.3f}")
+
+    return dxs, errs, slope
+
+    
+
+
 import datetime
 import os
 
@@ -290,4 +363,5 @@ if __name__ == "__main__":
     print("Running derivative operator tests...\n")
     test_first_derivative()
     test_second_derivative_and_viscous()
+    convergence_test()
     write_log()

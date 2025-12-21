@@ -1,0 +1,13 @@
+=== IncompFluidSolver Test Log ===
+Timestamp: 2025-12-05_14-29-57
+
+Momentum test: point=1.268e+00, vol=3.171e-03, sum=2.077e+00
+Momentum test: point=1.326e+00, vol=8.286e-02, sum=7.956e+00
+Momentum test: point=1.301e+00, vol=3.614e-02, sum=5.666e+00
+Momentum test: point=1.289e+00, vol=2.014e-02, sum=4.423e+00
+Momentum test: point=1.278e+00, vol=8.872e-03, sum=3.133e+00
+Momentum test: point=1.272e+00, vol=4.968e-03, sum=2.475e+00
+
+--- Momentum Convergence Summary ---
+Pointwise order:   0.029
+FV order:          2.029

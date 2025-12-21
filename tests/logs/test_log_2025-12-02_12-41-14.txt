@@ -1,0 +1,49 @@
+=== IncompFluidSolver Test Log ===
+Timestamp: 2025-12-02_12-41-14
+
+Momentum test 1:
+   pointwise error    = 6.925e-04
+   FV per-cell error  = 1.731e-06
+   FV global sum diff = 8.289e-03
+
+momentum test passed
+
+Momentum test 1:
+   pointwise error    = 1.728e-02
+   FV per-cell error  = 1.080e-03
+   FV global sum diff = 2.518e-01
+
+momentum test FAILED
+
+Momentum test 1:
+   pointwise error    = 7.692e-03
+   FV per-cell error  = 2.137e-04
+   FV global sum diff = 1.054e-01
+
+momentum test FAILED
+
+Momentum test 1:
+   pointwise error    = 4.329e-03
+   FV per-cell error  = 6.763e-05
+   FV global sum diff = 5.692e-02
+
+momentum test passed
+
+Momentum test 1:
+   pointwise error    = 1.924e-03
+   FV per-cell error  = 1.336e-05
+   FV global sum diff = 2.410e-02
+
+momentum test passed
+
+Momentum test 1:
+   pointwise error    = 1.082e-03
+   FV per-cell error  = 4.227e-06
+   FV global sum diff = 1.318e-02
+
+momentum test passed
+
+
+--- Momentum Convergence Summary ---
+Pointwise order:   1.999
+FV order:          3.999
