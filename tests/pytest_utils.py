@@ -23,12 +23,12 @@ def analytical_functions():
     r"""Create analytical functions for velocities and pressure."""
     alpha, beta = 10, 10
     pfun = lambda X, Y: 1 - alpha * torch.exp(
-        -beta * ((Y - 0.0) ** 2 + (X - 0.0) ** 2)
+        -beta * ((Y - 0.0) ** 4 + (X - 0.0) ** 2)
     )
     ufun = lambda X, Y: 1 - alpha * torch.exp(
-        -beta * ((Y - 0.25) ** 2 + (X - 0.25) ** 2)
+        -beta * ((Y - 0.25) ** 2 + (X - 0.25) ** 4)
     )
     vfun = lambda X, Y: 1 - alpha * torch.exp(
-        -beta * ((Y + 0.25) ** 2 + (X + 0.25) ** 2)
+        -beta * ((Y + 0.25) ** 4 + (X + 0.25) ** 2)
     )
     return ufun, vfun, pfun

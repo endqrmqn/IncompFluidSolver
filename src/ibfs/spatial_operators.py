@@ -167,7 +167,10 @@ class SpatialOperators:
         axes = xp.flipud(xp.arange(mesh.p.ndim, dtype=xp.int32))
         div = xp.zeros_like(mesh.p)
         for i, f in enumerate(fields):
-            slc = [slice(1, -1) if j != axes[i] else slice(None) for j in axes]
+            slc = [
+                slice(None) if j == axes[i] else slice(1, -1)
+                for j in range(len(axes))
+            ]
             div += evaluate_derivative_staggered(f, mesh.d, axis=axes[i])[
                 tuple(slc)
             ]
