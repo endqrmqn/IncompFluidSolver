@@ -5,8 +5,6 @@ import pytest_utils as pyut
 import matplotlib.pyplot as plt
 
 Re = 100
-nsop = ibfs.SpatialOperators(Re)
-
 
 x0 = -2
 x1 = 2
@@ -22,6 +20,7 @@ iter = 0
 for nx, ny in zip(nxs, nys):
     mesh = ibfs.Mesh(x0, x1, nx, y0, y1, ny)
     _, torch_mesh = mesh.generate_meshgrids(output_torch=True)
+    nsop = ibfs.SpatialOperators(Re, mesh)
     Xu, Yu, Xv, Yv, Xp, Yp = torch_mesh
     ufun, vfun, pfun = pyut.analytical_functions()
 

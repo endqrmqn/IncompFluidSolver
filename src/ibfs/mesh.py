@@ -1,6 +1,7 @@
 import numpy as xp
 import scipy as sp
 import torch
+from typing import List, Optional
 
 
 class Mesh:
@@ -22,7 +23,7 @@ class Mesh:
 
     :param x0: :math:`x` location of the left boundary (inflow)
     :type x0: float
-    :param x1: :math:`x` location of the right boundary (inflow)
+    :param x1: :math:`x` location of the right boundary (outflow)
     :type x1: float
     :param nx: number of cells in the x direction
     :type nx: int
@@ -45,6 +46,7 @@ class Mesh:
                 f"dx and dy should be the same. Currently "
                 f"dx = {dx} and dy = {dy}"
             )
+        # Vectors containing the coordinates of the interior cell centers
         self.x = dx * xp.arange(nx) + x0 + dx / 2
         self.y = dy * xp.arange(ny) + y0 + dy / 2
         self.d = dx
@@ -82,24 +84,39 @@ class Mesh:
         print(f"Grid spacing : Δx = Δy = {self.d:.4e}")
         print("-" * 60)
 
-    def generate_meshgrids(self, output_torch=False):
+    def generate_meshgrids(
+        self, output_torch: Optional[bool] = False
+    ) -> List[xp.array] | List[torch.tensor]:
+        r"""
+        Generate meshgrids for the :math:`u`, :math:`v`, and :math:`p` fields as a list
+        :code:`[Xu, Yu, Xv, Yv, Xp, Yp]`.
+
+        :param output_torch: outputs the meshgrids as torch tensors if :code:`True`,
+            and as numpy/cupy arrays otherwise. (Torch is often used in tests/ for its
+            autodiff capabilities.)
+        :type output_torch: Optional[bool], defaults to :code:`False`
+
+        :rtype: List[xp.array] | List[torch.tensor]
+        """
+        # Identify the coordinates of the left, right, top, and bottom walls
         x0 = self.x[0] - self.d / 2
         x1 = self.x[-1] + self.d / 2
         y0 = self.y[0] - self.d / 2
         y1 = self.y[-1] + self.d / 2
 
+        # Meshgrids for the u velocity field
         xu = xp.arange(x0, x1 + self.d / 2, self.d)
         yu = xp.arange(y0 - self.d / 2, y1 + self.d, self.d)
         Xu, Yu = xp.meshgrid(xu, yu)
         assert Xu.shape == self.u_ext.shape
         assert Yu.shape == self.u_ext.shape
-
+        # Meshgrids for the v velocity field
         xv = xp.arange(x0 - self.d / 2, x1 + self.d, self.d)
         yv = xp.arange(y0, y1 + self.d / 2, self.d)
         Xv, Yv = xp.meshgrid(xv, yv)
         assert Xv.shape == self.v_ext.shape
         assert Yv.shape == self.v_ext.shape
-
+        # Meshgrids for the pressure field
         Xp, Yp = xp.meshgrid(self.x, self.y)
 
         xp_tensors = [Xu, Yu, Xv, Yv, Xp, Yp]

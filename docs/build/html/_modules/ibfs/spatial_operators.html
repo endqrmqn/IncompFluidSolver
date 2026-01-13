@@ -71,6 +71,15 @@
   <h1>Source code for ibfs.spatial_operators</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xp</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sp</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.helpers</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">interpolate_1d</span><span class="p">,</span>
+    <span class="n">evaluate_derivative</span><span class="p">,</span>
+    <span class="n">evaluate_derivative_staggered</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.mesh</span><span class="w"> </span><span class="kn">import</span> <span class="n">Mesh</span>
 
 
 <div class="viewcode-block" id="SpatialOperators">
@@ -78,144 +87,208 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">SpatialOperators</span><span class="p">:</span>
 <span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Class to evaluate the right-hand side of the Navier-Stokes equation.</span>
+
+<span class="sd">    :param Re: Reynolds number</span>
+<span class="sd">    :type Re: float</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Re</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">Re</span> <span class="o">=</span> <span class="n">Re</span>
-    
-<div class="viewcode-block" id="SpatialOperators.interpolate_1d">
-<a class="viewcode-back" href="../../spatial_operators.html#ibfs.spatial_operators.SpatialOperators.interpolate_1d">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">interpolate_1d</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">w</span><span class="p">:</span> <span class="n">xp</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">axis</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xp</span><span class="o">.</span><span class="n">array</span><span class="p">:</span>
+
+<div class="viewcode-block" id="SpatialOperators.evaluate_laplacian">
+<a class="viewcode-back" href="../../spatial_operators.html#ibfs.spatial_operators.SpatialOperators.evaluate_laplacian">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">evaluate_laplacian</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">w</span><span class="p">:</span> <span class="n">xp</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">d</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xp</span><span class="o">.</span><span class="n">array</span><span class="p">:</span>
 <span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Perform 1d interpolation of the two-dimensional array :math:`w` along the</span>
-<span class="sd">        direction specified by axis.</span>
-
-<span class="sd">        :param w: two-dimensional array we wish to interpolate</span>
-<span class="sd">        :type w: numpy/cupy array</span>
-<span class="sd">        :param axis: direction of interpolation</span>
-<span class="sd">        :type axis: int</span>
-
-<span class="sd">        .. attention::</span>
-
-<span class="sd">            This function returns an array of a different size than the</span>
-<span class="sd">            original input array :math:`w`. If :math:`w` has size :math:`n\times m`,</span>
-<span class="sd">            the dimension along :code:`axis` is reduced by :math:`1`.</span>
-
-<span class="sd">        :rtype: numpy/cupy array</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># For reference: slice(start, stop, step)</span>
-        <span class="n">slc0</span> <span class="o">=</span> <span class="p">[</span><span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">)]</span> <span class="o">*</span> <span class="n">w</span><span class="o">.</span><span class="n">ndim</span>
-        <span class="n">slc1</span> <span class="o">=</span> <span class="p">[</span><span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">)]</span> <span class="o">*</span> <span class="n">w</span><span class="o">.</span><span class="n">ndim</span>
-        <span class="n">slc0</span><span class="p">[</span><span class="n">axis</span><span class="p">]</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># Slice from 0 to -1 in axis direction</span>
-        <span class="n">slc1</span><span class="p">[</span><span class="n">axis</span><span class="p">]</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>  <span class="c1"># Slice from 1 to end in axis direction</span>
-        <span class="k">return</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">w</span><span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">slc0</span><span class="p">)]</span> <span class="o">+</span> <span class="n">w</span><span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">slc1</span><span class="p">)])</span></div>
-
-
-<div class="viewcode-block" id="SpatialOperators.interpolate_2d">
-<a class="viewcode-back" href="../../spatial_operators.html#ibfs.spatial_operators.SpatialOperators.interpolate_2d">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">interpolate_2d</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">w</span><span class="p">:</span> <span class="n">xp</span><span class="o">.</span><span class="n">array</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xp</span><span class="o">.</span><span class="n">array</span><span class="p">:</span>
-<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Apply :func:`interpolate_1d` twice along both directions.</span>
-
-<span class="sd">        :param w: two-dimensional array we wish to interpolate</span>
-<span class="sd">        :type w: numpy/cupy array</span>
-
-<span class="sd">        .. attention::</span>
-
-<span class="sd">            This function returns an array of a different size than the</span>
-<span class="sd">            original input array :math:`w`. If :math:`w` has size :math:`n\times m`,</span>
-<span class="sd">            the dimension of the output array will be :math:`(n-1)\times (m-1)`.</span>
-
-<span class="sd">        :rtype: numpy/cupy array</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">interpolate_1d</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">interpolate_1d</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="mi">1</span><span class="p">)</span></div>
-
-
-
-<div class="viewcode-block" id="SpatialOperators.evaluate_derivative">
-<a class="viewcode-back" href="../../spatial_operators.html#ibfs.spatial_operators.SpatialOperators.evaluate_derivative">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">evaluate_derivative</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mesh</span><span class="p">,</span> <span class="n">w</span><span class="p">:</span> <span class="n">xp</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">order</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">axis</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
-<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Evaluate derivative of field :math:`w` in the direction specified by :code:`axis`.</span>
-<span class="sd">        The order of the derivative (i.e., first or second) is specified by :code:`order`.</span>
-
-<span class="sd">        :param w: two-dimensional array</span>
-<span class="sd">        :type w: numpy/cupy array</span>
-<span class="sd">        :param order: order of the derivative</span>
-<span class="sd">        :type order: int</span>
-<span class="sd">        :param axis: direction along which to take the derivative</span>
-<span class="sd">        :type axis: int</span>
-
-<span class="sd">        :rtype: numpy/cupy array</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">slc0</span> <span class="o">=</span> <span class="p">[</span><span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">)]</span> <span class="o">*</span> <span class="n">w</span><span class="o">.</span><span class="n">ndim</span>
-        <span class="n">slc1</span> <span class="o">=</span> <span class="p">[</span><span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">)]</span> <span class="o">*</span> <span class="n">w</span><span class="o">.</span><span class="n">ndim</span>
-        <span class="n">slc0</span><span class="p">[</span><span class="n">axis</span><span class="p">]</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="c1"># Slice from 0 to -1 in axis direction</span>
-        <span class="n">slc1</span><span class="p">[</span><span class="n">axis</span><span class="p">]</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="c1"># Slice from 1 to end in axis direction</span>
-
-        <span class="k">return</span> <span class="p">(</span>
-            <span class="p">(</span><span class="n">w</span><span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">slc1</span><span class="p">)]</span> <span class="o">-</span> <span class="n">w</span><span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">slc0</span><span class="p">)])</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">mesh</span><span class="o">.</span><span class="n">d</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">order</span> <span class="o">==</span> <span class="mi">1</span>
-            <span class="k">else</span> <span class="p">(</span><span class="n">w</span><span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">slc1</span><span class="p">)]</span> <span class="o">-</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">w</span> <span class="o">+</span> <span class="n">w</span><span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">slc0</span><span class="p">)])</span> <span class="o">/</span> <span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">d</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
-        <span class="p">)</span></div>
-
-
-<div class="viewcode-block" id="SpatialOperators.evaluate_viscous_term">
-<a class="viewcode-back" href="../../spatial_operators.html#ibfs.spatial_operators.SpatialOperators.evaluate_viscous_term">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">evaluate_viscous_term</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">w</span><span class="p">:</span> <span class="n">xp</span><span class="o">.</span><span class="n">array</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xp</span><span class="o">.</span><span class="n">array</span><span class="p">:</span>
-<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Compute </span>
-
-<span class="sd">        .. math::</span>
-
-<span class="sd">            Re^{-1}\nabla^2 w = Re^{-1}\left(\partial_x^2 w + \partial_y^2 w\right)</span>
-
+<span class="sd">        Compute :math:`\nabla^2 w = \left(\partial_x^2 w + \partial_y^2 w\right)`,</span>
 <span class="sd">        where :math:`w` is either the :math:`x` or :math:`y` velocity field.</span>
-
-<span class="sd">        :param w: two-dimensional array</span>
-<span class="sd">        :type w: numpy/cupy array</span>
 
 <span class="sd">        .. attention::</span>
 
 <span class="sd">            This function returns an array of a different size than the</span>
 <span class="sd">            original input array :math:`w`. If :math:`w` has size :math:`n\times m`,</span>
 <span class="sd">            the dimension of the output array will be :math:`(n-2)\times (m-2)`.</span>
-<span class="sd">        </span>
+
+<span class="sd">        :param w: two-dimensional array</span>
+<span class="sd">        :type w: xp.array</span>
+<span class="sd">        :param d: grid spacing</span>
+<span class="sd">        :type d: float</span>
+
 <span class="sd">        :rtype: cupy/numpy array</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">size</span> <span class="o">=</span> <span class="n">w</span><span class="o">.</span><span class="n">shape</span>
-        <span class="n">size</span> <span class="o">=</span> <span class="p">(</span><span class="n">size</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="mi">2</span><span class="p">,</span> <span class="n">size</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mi">2</span><span class="p">)</span>
-        <span class="n">dw</span> <span class="o">=</span> <span class="n">xp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">w</span><span class="o">.</span><span class="n">type</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">axis</span> <span class="ow">in</span> <span class="nb">range</span> <span class="p">(</span><span class="mi">2</span><span class="p">):</span>
-            <span class="n">other_axis</span> <span class="o">=</span> <span class="n">xp</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">axis</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
-            <span class="n">slc</span> <span class="o">=</span> <span class="p">[</span><span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">)]</span> <span class="o">*</span> <span class="n">w</span><span class="o">.</span><span class="n">ndim</span>
-            <span class="n">slc</span><span class="p">[</span><span class="n">other_axis</span><span class="p">]</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
-            <span class="n">dw</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">evaluate_derivative</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">axis</span><span class="p">)[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">slc</span><span class="p">)]</span>
-        <span class="k">return</span> <span class="n">dw</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">Re</span></div>
+        <span class="n">size</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">([</span><span class="n">s</span> <span class="o">-</span> <span class="mi">2</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">w</span><span class="o">.</span><span class="n">shape</span><span class="p">])</span>
+        <span class="n">dw</span> <span class="o">=</span> <span class="n">xp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">w</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="n">axes</span> <span class="o">=</span> <span class="n">xp</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">w</span><span class="o">.</span><span class="n">ndim</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">xp</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">axis</span> <span class="ow">in</span> <span class="n">axes</span><span class="p">:</span>
+            <span class="n">slc</span> <span class="o">=</span> <span class="p">[</span><span class="nb">slice</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="k">if</span> <span class="n">i</span> <span class="o">!=</span> <span class="n">axis</span> <span class="k">else</span> <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">axes</span><span class="p">]</span>
+            <span class="n">dw</span> <span class="o">+=</span> <span class="n">evaluate_derivative</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">axis</span><span class="p">)[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">slc</span><span class="p">)]</span>
+        <span class="k">return</span> <span class="n">dw</span></div>
 
-    
-<div class="viewcode-block" id="SpatialOperators.evaluate_advective_term_x">
-<a class="viewcode-back" href="../../spatial_operators.html#ibfs.spatial_operators.SpatialOperators.evaluate_advective_term_x">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">evaluate_advective_term_x</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">u</span><span class="p">:</span> <span class="n">xp</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="n">xp</span><span class="o">.</span><span class="n">array</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xp</span><span class="o">.</span><span class="n">array</span><span class="p">:</span>
+
+<div class="viewcode-block" id="SpatialOperators.evaluate_streamwise_advection">
+<a class="viewcode-back" href="../../spatial_operators.html#ibfs.spatial_operators.SpatialOperators.evaluate_streamwise_advection">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">evaluate_streamwise_advection</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">u</span><span class="p">:</span> <span class="n">xp</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="n">xp</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">d</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xp</span><span class="o">.</span><span class="n">array</span><span class="p">:</span>
 <span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Compute</span>
 
 <span class="sd">        .. math::</span>
 
-<span class="sd">            \int_{Y} u^2(x,y)\big\lvert_{x=x_{l}}^{x=x_r}\,dy + </span>
+<span class="sd">            \int_{Y} u^2(x,y)\big\lvert_{x=x_{l}}^{x=x_r}\,dy +</span>
 <span class="sd">            \int_{X}\left[u(x,y)v(x,y)\right]_{y={y_b}}^{y=y_{t}}\,dx</span>
-<span class="sd">        </span>
+
+<span class="sd">        on each finite volume (see Figure 2 in the docs/notes/cfd_solver_details.pdf).</span>
+
+<span class="sd">        .. attention::</span>
+
+<span class="sd">            This function returns an array of size :math:`n_y \times (n_x - 1)`,</span>
+<span class="sd">            where :math:`n_y` and :math:`n_x` are the number of internal cell</span>
+<span class="sd">            centers in the :math:`y` and :math:`x` directions, respectively.</span>
+
+<span class="sd">        :param u: streamwise velocity field</span>
+<span class="sd">        :type u: xp.array</span>
+<span class="sd">        :param v: wall-normal velocity field</span>
+<span class="sd">        :type v: xp.array</span>
+<span class="sd">        :param d: grid spacing</span>
+<span class="sd">        :type d: float</span>
+
+<span class="sd">        :rtype: xp.array</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">u_interp_x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">interpolate_1d</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-        <span class="n">u_interp_y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">interpolate_1d</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-        <span class="n">v_interp_x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">interpolate_1d</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="c1"># Compute u_interp_x = (u_{i,j+1} + u_{i,j})/2</span>
+        <span class="n">u_interp_x</span> <span class="o">=</span> <span class="n">interpolate_1d</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="c1"># Compute u_interp_y = (u_{i+1,j} + u_{i,j})/2</span>
+        <span class="n">u_interp_y</span> <span class="o">=</span> <span class="n">interpolate_1d</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="c1"># Compute v_interp_x = (v_{i,j+1} + v_{i,j})/2</span>
+        <span class="n">v_interp_x</span> <span class="o">=</span> <span class="n">interpolate_1d</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 
-        <span class="n">rhs</span> <span class="o">=</span> <span class="p">(</span><span class="n">u_interp_x</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">:]</span><span class="o">**</span><span class="mi">2</span> <span class="o">-</span> <span class="n">u_interp_x</span><span class="p">[:,</span> <span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
-        <span class="n">rhs</span> <span class="o">+=</span> <span class="p">(</span><span class="n">u_interp_y</span><span class="p">[</span><span class="mi">1</span><span class="p">:,</span> <span class="p">]</span> <span class="o">*</span> <span class="n">v_interp_x</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">:]</span> <span class="o">-</span> <span class="n">u_interp_y</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">]</span> <span class="o">*</span> <span class="n">v_interp_x</span><span class="p">[:,</span> <span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span></div>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="n">u_interp_x</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">:]</span> <span class="o">**</span> <span class="mi">2</span>
+            <span class="o">-</span> <span class="n">u_interp_x</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span>
+            <span class="o">+</span> <span class="n">u_interp_y</span><span class="p">[</span><span class="mi">1</span><span class="p">:,</span> <span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">v_interp_x</span><span class="p">[</span><span class="mi">1</span><span class="p">:,</span> <span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="o">-</span> <span class="n">u_interp_y</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">v_interp_x</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="p">)</span> <span class="o">*</span> <span class="n">d</span></div>
+
+
+<div class="viewcode-block" id="SpatialOperators.evaluate_wallnormal_advection">
+<a class="viewcode-back" href="../../spatial_operators.html#ibfs.spatial_operators.SpatialOperators.evaluate_wallnormal_advection">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">evaluate_wallnormal_advection</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">u</span><span class="p">:</span> <span class="n">xp</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="n">xp</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">d</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xp</span><span class="o">.</span><span class="n">array</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute</span>
+
+<span class="sd">        .. math::</span>
+
+<span class="sd">            \int_{X} v^2(x,y)\big\lvert_{y=y_{b}}^{y=y_t}\,dx +</span>
+<span class="sd">            \int_{Y}\left[u(x,y)v(x,y)\right]_{x={x_l}}^{x=x_{t}}\,dy</span>
+
+<span class="sd">        on each finite volume (see Figure 3 in the docs/notes/cfd_solver_details.pdf).</span>
+
+<span class="sd">        .. attention::</span>
+
+<span class="sd">            This function returns an array of size :math:`(n_y-1) \times n_x`,</span>
+<span class="sd">            where :math:`n_y` and :math:`n_x` are the number of internal cell</span>
+<span class="sd">            centers in the :math:`y` and :math:`x` directions, respectively.</span>
+
+<span class="sd">        :param u: streamwise velocity field</span>
+<span class="sd">        :type u: xp.array</span>
+<span class="sd">        :param v: wall-normal velocity field</span>
+<span class="sd">        :type v: xp.array</span>
+<span class="sd">        :param d: grid spacing</span>
+<span class="sd">        :type d: float</span>
+
+<span class="sd">        :rtype: cupy/numpy array</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Compute u_interp_y = (u_{i+1,j} + u_{i,j})/2</span>
+        <span class="n">u_interp_y</span> <span class="o">=</span> <span class="n">interpolate_1d</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="c1"># Compute v_interp_y = (v_{i+1,j} + v_{i,j})/2</span>
+        <span class="n">v_interp_y</span> <span class="o">=</span> <span class="n">interpolate_1d</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="c1"># Compute v_interp_y = (v_{i,j+1} + v_{i,j})/2</span>
+        <span class="n">v_interp_x</span> <span class="o">=</span> <span class="n">interpolate_1d</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="n">v_interp_y</span><span class="p">[</span><span class="mi">1</span><span class="p">:,</span> <span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span>
+            <span class="o">-</span> <span class="n">v_interp_y</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span>
+            <span class="o">+</span> <span class="n">v_interp_x</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">:]</span> <span class="o">*</span> <span class="n">u_interp_y</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">:]</span>
+            <span class="o">-</span> <span class="n">v_interp_x</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">u_interp_y</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="p">)</span> <span class="o">*</span> <span class="n">d</span></div>
+
+
+<div class="viewcode-block" id="SpatialOperators.evaluate_momentum_equation">
+<a class="viewcode-back" href="../../spatial_operators.html#ibfs.spatial_operators.SpatialOperators.evaluate_momentum_equation">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">evaluate_momentum_equation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mesh</span><span class="p">:</span> <span class="s2">&quot;Mesh&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">xp</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">xp</span><span class="o">.</span><span class="n">array</span><span class="p">]:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluate the discretized momentum equation (without pressure) in the</span>
+<span class="sd">        incompressible Navier-Stokes equations. It calls the functions</span>
+<span class="sd">        :func:`evaluate_laplacian`, :func:`evaluate_streamwise_advection` and</span>
+<span class="sd">        :func:`evaluate_wallnormal_advection`, and it returns a 2-tuple</span>
+<span class="sd">        containing the evaluation of the :math:`x`- and :math:`y`-momentum</span>
+<span class="sd">        equations.</span>
+
+<span class="sd">        :param mesh: instance of the class :class:`Mesh`</span>
+<span class="sd">        :type mesh: Mesh</span>
+<span class="sd">        :rtype: Tuple[xp.array, xp.array]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">mom_x</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">evaluate_laplacian</span><span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">u_ext</span><span class="p">,</span> <span class="n">mesh</span><span class="o">.</span><span class="n">d</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">Re</span>
+            <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">evaluate_streamwise_advection</span><span class="p">(</span>
+                <span class="n">mesh</span><span class="o">.</span><span class="n">u_ext</span><span class="p">,</span> <span class="n">mesh</span><span class="o">.</span><span class="n">v_ext</span><span class="p">,</span> <span class="n">mesh</span><span class="o">.</span><span class="n">d</span>
+            <span class="p">)</span>
+            <span class="o">/</span> <span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">d</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+            <span class="o">+</span> <span class="n">mesh</span><span class="o">.</span><span class="n">fx_int</span>
+        <span class="p">)</span>
+        <span class="n">mom_y</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">evaluate_laplacian</span><span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">v_ext</span><span class="p">,</span> <span class="n">mesh</span><span class="o">.</span><span class="n">d</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">Re</span>
+            <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">evaluate_wallnormal_advection</span><span class="p">(</span>
+                <span class="n">mesh</span><span class="o">.</span><span class="n">u_ext</span><span class="p">,</span> <span class="n">mesh</span><span class="o">.</span><span class="n">v_ext</span><span class="p">,</span> <span class="n">mesh</span><span class="o">.</span><span class="n">d</span>
+            <span class="p">)</span>
+            <span class="o">/</span> <span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">d</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+            <span class="o">+</span> <span class="n">mesh</span><span class="o">.</span><span class="n">fy_int</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">mom_x</span><span class="p">,</span> <span class="n">mom_y</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SpatialOperators.evaluate_pressure_gradient">
+<a class="viewcode-back" href="../../spatial_operators.html#ibfs.spatial_operators.SpatialOperators.evaluate_pressure_gradient">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">evaluate_pressure_gradient</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mesh</span><span class="p">:</span> <span class="s2">&quot;Mesh&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">xp</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">xp</span><span class="o">.</span><span class="n">array</span><span class="p">]:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute :math:`\left(\frac{\partial p}{\partial x}, \frac{\partial p}{\partial y}\right)`.</span>
+
+<span class="sd">        :param mesh: instance of the :class:`Mesh` class</span>
+<span class="sd">        :type mesh: Mesh</span>
+<span class="sd">        :rtype: Tuple[xp.array, xp.array]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="n">evaluate_derivative_staggered</span><span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">p</span><span class="p">,</span> <span class="n">mesh</span><span class="o">.</span><span class="n">d</span><span class="p">,</span> <span class="n">ax</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">ax</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+            <span class="p">]</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SpatialOperators.evaluate_divergence">
+<a class="viewcode-back" href="../../spatial_operators.html#ibfs.spatial_operators.SpatialOperators.evaluate_divergence">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">evaluate_divergence</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mesh</span><span class="p">:</span> <span class="s2">&quot;Mesh&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xp</span><span class="o">.</span><span class="n">array</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute :math:`\nabla\cdot \mathbf{u} = \partial_x u + \partial_y v`.</span>
+
+<span class="sd">        :param mesh: instance of the :class:`Mesh` class</span>
+<span class="sd">        :type mesh: Mesh</span>
+<span class="sd">        :rtype: xp.array</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">fields</span> <span class="o">=</span> <span class="p">[</span><span class="n">mesh</span><span class="o">.</span><span class="n">u_ext</span><span class="p">,</span> <span class="n">mesh</span><span class="o">.</span><span class="n">v_ext</span><span class="p">]</span>
+        <span class="n">axes</span> <span class="o">=</span> <span class="n">xp</span><span class="o">.</span><span class="n">flipud</span><span class="p">(</span><span class="n">xp</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">ndim</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">xp</span><span class="o">.</span><span class="n">int32</span><span class="p">))</span>
+        <span class="n">div</span> <span class="o">=</span> <span class="n">xp</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">p</span><span class="p">)</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">fields</span><span class="p">):</span>
+            <span class="n">slc</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span> <span class="k">if</span> <span class="n">j</span> <span class="o">==</span> <span class="n">axes</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">else</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">axes</span><span class="p">))</span>
+            <span class="p">]</span>
+            <span class="n">div</span> <span class="o">+=</span> <span class="n">evaluate_derivative_staggered</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">mesh</span><span class="o">.</span><span class="n">d</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="n">axes</span><span class="p">[</span><span class="n">i</span><span class="p">])[</span>
+                <span class="nb">tuple</span><span class="p">(</span><span class="n">slc</span><span class="p">)</span>
+            <span class="p">]</span>
+        <span class="k">return</span> <span class="n">div</span></div>
 </div>
-
-
-
-    
 
 </pre></div>
 

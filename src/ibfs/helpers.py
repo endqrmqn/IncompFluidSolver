@@ -7,7 +7,7 @@ def interpolate_1d(w: xp.array, axis: int) -> xp.array:
     :math:`w` along the direction specified by :code:`axis`.
 
     :param w: two-dimensional array we wish to interpolate
-    :type w: numpy/cupy array
+    :type w: xp.array
     :param axis: direction of interpolation
     :type axis: int
 
@@ -17,7 +17,7 @@ def interpolate_1d(w: xp.array, axis: int) -> xp.array:
         original input array :math:`w`. If :math:`w` has size :math:`n\times m`,
         the dimension along :code:`axis` is reduced by :math:`1`.
 
-    :rtype: numpy/cupy array
+    :rtype: xp.array
     """
     # For reference: slice(start, stop, step)
     slc0 = [slice(None)] * w.ndim
@@ -34,7 +34,7 @@ def evaluate_derivative(w: xp.array, d: float, order: int, axis: int):
     We use a second-order central difference scheme.
 
     :param w: two-dimensional array
-    :type w: numpy/cupy array
+    :type w: xp.array
     :param d: grid spacing
     :type d: float
     :param order: order of the derivative
@@ -42,7 +42,7 @@ def evaluate_derivative(w: xp.array, d: float, order: int, axis: int):
     :param axis: direction along which to take the derivative
     :type axis: int
 
-    :rtype: numpy/cupy array
+    :rtype: xp.array
     """
     slcm1 = [slice(None)] * w.ndim
     slcp1 = [slice(None)] * w.ndim
@@ -68,13 +68,13 @@ def evaluate_derivative_staggered(
     in the Navier-Stokes equation.
 
     :param w: two-dimensional array
-    :type w: numpy/cupy array
+    :type w: xp.array
     :param d: grid spacing
     :type d: float
     :param axis: direction along which to take the derivative
     :type axis: int
 
-    :rtype: numpy/cupy array
+    :rtype: xp.array
     """
     slcm = [slice(None)] * w.ndim
     slcp = [slice(None)] * w.ndim

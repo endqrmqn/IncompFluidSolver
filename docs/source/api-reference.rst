@@ -7,3 +7,4 @@ API-reference
 
    mesh.rst
    spatial_operators.rst
+   boundary_conditions.rst

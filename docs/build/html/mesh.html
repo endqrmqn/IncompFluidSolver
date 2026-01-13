@@ -48,12 +48,14 @@
 <li class="toctree-l1 current"><a class="reference internal" href="api-reference.html">API-reference</a><ul class="current">
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Mesh</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#ibfs.mesh.Mesh"><code class="docutils literal notranslate"><span class="pre">Mesh</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#ibfs.mesh.Mesh.generate_meshgrids"><code class="docutils literal notranslate"><span class="pre">Mesh.generate_meshgrids()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#ibfs.mesh.Mesh.info"><code class="docutils literal notranslate"><span class="pre">Mesh.info()</span></code></a></li>
 </ul>
 </li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="spatial_operators.html">Spatial Operators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="boundary_conditions.html">Boundary Conditions</a></li>
 </ul>
 </li>
 </ul>
@@ -104,7 +106,7 @@ This class also holds two-dimensional arrays to store the <span class="math notr
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>x0</strong> (<em>float</em>) – <span class="math notranslate nohighlight">\(x\)</span> location of the left boundary (inflow)</p></li>
-<li><p><strong>x1</strong> (<em>float</em>) – <span class="math notranslate nohighlight">\(x\)</span> location of the right boundary (inflow)</p></li>
+<li><p><strong>x1</strong> (<em>float</em>) – <span class="math notranslate nohighlight">\(x\)</span> location of the right boundary (outflow)</p></li>
 <li><p><strong>nx</strong> (<em>int</em>) – number of cells in the x direction</p></li>
 <li><p><strong>y0</strong> (<em>float</em>) – <span class="math notranslate nohighlight">\(y\)</span> location of the bottom boundary</p></li>
 <li><p><strong>y1</strong> (<em>float</em>) – <span class="math notranslate nohighlight">\(y\)</span> location of the top boundary</p></li>
@@ -112,6 +114,23 @@ This class also holds two-dimensional arrays to store the <span class="math notr
 </ul>
 </dd>
 </dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="ibfs.mesh.Mesh.generate_meshgrids">
+<span class="sig-name descname"><span class="pre">generate_meshgrids</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_torch</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">array</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">tensor</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/ibfs/mesh.html#Mesh.generate_meshgrids"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ibfs.mesh.Mesh.generate_meshgrids" title="Link to this definition"></a></dt>
+<dd><p>Generate meshgrids for the <span class="math notranslate nohighlight">\(u\)</span>, <span class="math notranslate nohighlight">\(v\)</span>, and <span class="math notranslate nohighlight">\(p\)</span> fields as a list
+<code class="code docutils literal notranslate"><span class="pre">[Xu,</span> <span class="pre">Yu,</span> <span class="pre">Xv,</span> <span class="pre">Yv,</span> <span class="pre">Xp,</span> <span class="pre">Yp]</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>output_torch</strong> (Optional[bool], defaults to <code class="code docutils literal notranslate"><span class="pre">False</span></code>) – outputs the meshgrids as torch tensors if <code class="code docutils literal notranslate"><span class="pre">True</span></code>,
+and as numpy/cupy arrays otherwise. (Torch is often used in tests/ for its
+autodiff capabilities.)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>List[xp.array] | List[torch.tensor]</p>
+</dd>
+</dl>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="ibfs.mesh.Mesh.info">
 <span class="sig-name descname"><span class="pre">info</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ibfs/mesh.html#Mesh.info"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ibfs.mesh.Mesh.info" title="Link to this definition"></a></dt>

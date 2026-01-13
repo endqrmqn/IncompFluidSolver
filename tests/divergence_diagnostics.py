@@ -5,7 +5,6 @@ import pytest_utils as pyut
 import matplotlib.pyplot as plt
 
 Re = 100
-nsop = ibfs.SpatialOperators(Re)
 
 
 x0 = -2
@@ -20,6 +19,7 @@ error_x = []
 iter = 0
 for nx, ny in zip(nxs, nys):
     mesh = ibfs.Mesh(x0, x1, nx, y0, y1, ny)
+    nsop = ibfs.SpatialOperators(Re, mesh)
     _, torch_mesh = mesh.generate_meshgrids(output_torch=True)
     Xu, Yu, Xv, Yv, Xp, Yp = torch_mesh
 
