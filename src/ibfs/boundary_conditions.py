@@ -95,13 +95,14 @@ class BoundaryConditions:
                 f"If x0 or x1 are periodic, they should both be! Currently "
                 f"x0 = {self.x0} and x1 = {self.x1}. Please fix this."
             )
-    
-    def impose_boundary_conditions(self, field: xp.array, t: float):
+
+    def impose_boundary_conditions(self, field: xp.array, t: float) -> None:
         r"""
         Impose boundary conditions on the velocity field. This function modifies
         the input :code:`field` in place.
 
         :param field: 2D array contaning either the streamwise or wall-normal velocity field
+            (Usually :code:`mesh.u_ext` or :code:`mesh.v_ext`.)
         :type field: xp.array
         :param t: value of time at which to evaluate the dirichlet boundary conditions (if any)
         :type t: float

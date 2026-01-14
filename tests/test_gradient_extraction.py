@@ -18,6 +18,7 @@ nx, ny = 100, 50
 mesh = ibfs.Mesh(x0, x1, nx, y0, y1, ny)
 SpOps = ibfs.SpatialOperators(Re, mesh)
 
+
 def grad_fun(p):
     mesh.p[:, :] = p.reshape(*mesh.p.shape)
     dpdx, dpdy = SpOps.evaluate_pressure_gradient(mesh)
@@ -25,11 +26,9 @@ def grad_fun(p):
     dpdy = dpdy.reshape(-1)
     return xp.concatenate((dpdx, dpdy))
 
+
 vec = xp.random.randn(xp.prod(mesh.p.shape))
 x = grad_fun(vec)
 y = SpOps.G.dot(vec)
 error = xp.linalg.norm(x - y) / xp.linalg.norm(x) * 100
 print(error, xp.linalg.norm(x))
-
-
-

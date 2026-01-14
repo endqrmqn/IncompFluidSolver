@@ -1,9 +1,16 @@
 import numpy as xp
-import scipy as sp
+import scipy.sparse as sps
+from typing import Tuple, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .mesh import Mesh
+    from .boundary_conditions import BoundaryConditions
+
 from .helpers import (
     interpolate_1d,
     evaluate_derivative,
     evaluate_derivative_staggered,
+    vector_to_fields,
 )
 from .sparse_matrix_operators import (
     divergence_sparsity_pattern,
@@ -12,9 +19,6 @@ from .sparse_matrix_operators import (
     gradient_data,
     assemble_matrix,
 )
-from typing import Tuple, TYPE_CHECKING
-if TYPE_CHECKING:
-    from .mesh import Mesh
 
 
 class SpatialOperators:
@@ -24,14 +28,29 @@ class SpatialOperators:
     :param Re: Reynolds number
     :type Re: float
     :param mesh: an instance of the :class:`Mesh` class
+    :type mesh: Mesh
+    :param bcs: a tuple of instances of the :class:`BoundaryConditions` class
+        (the length of the tuple is equal to the number of velocity components)
+    :type bcs: Tuple[BoundaryConditions]
     """
 
-    def __init__(self, Re: float, mesh: "Mesh"):
+    def __init__(
+        self,
+        Re: float,
+        mesh: "Mesh",
+        bcs: Tuple["BoundaryConditions"],
+        test: Optional[bool] = False,
+    ):
         self.Re = Re
         self.mesh = mesh
+        self.bcs = bcs
 
         self.assemble_divergence_matrix()
         self.assemble_gradient_matrix()
+        self.assemble_laplacian_matrix()
+        if not test:
+            self.augment_pressure_laplacian()
+            self.LuLa = sps.linalg.splu(self.La)
 
     def evaluate_laplacian(self, w: xp.array, d: float) -> xp.array:
         r"""
@@ -143,94 +162,172 @@ class SpatialOperators:
             - v_interp_x[1:-1, :-1] * u_interp_y[1:-1, :-1]
         ) * d
 
-    def evaluate_momentum_equation(
-        self, mesh: "Mesh"
-    ) -> Tuple[xp.array, xp.array]:
+    def evaluate_momentum_equation(self) -> Tuple[xp.array, xp.array]:
         r"""
         Evaluate the discretized momentum equation (without pressure) in the
         incompressible Navier-Stokes equations. Returns a 2-tuple
         containing the evaluation of the :math:`x`- and :math:`y`-momentum
         equations.
 
-        :param mesh: instance of the class :class:`Mesh`
-        :type mesh: Mesh
         :rtype: Tuple[xp.array, xp.array]
         """
         mom_x = (
-            self.evaluate_laplacian(mesh.u_ext, mesh.d) / self.Re
+            self.evaluate_laplacian(self.mesh.u_ext, self.mesh.d) / self.Re
             - self.evaluate_streamwise_advection(
-                mesh.u_ext, mesh.v_ext, mesh.d
+                self.mesh.u_ext, self.mesh.v_ext, self.mesh.d
             )
-            / (mesh.d**2)
-            + mesh.fx_int
+            / (self.mesh.d**2)
+            + self.mesh.fx_int
         )
         mom_y = (
-            self.evaluate_laplacian(mesh.v_ext, mesh.d) / self.Re
+            self.evaluate_laplacian(self.mesh.v_ext, self.mesh.d) / self.Re
             - self.evaluate_wallnormal_advection(
-                mesh.u_ext, mesh.v_ext, mesh.d
+                self.mesh.u_ext, self.mesh.v_ext, self.mesh.d
             )
-            / (mesh.d**2)
-            + mesh.fy_int
+            / (self.mesh.d**2)
+            + self.mesh.fy_int
         )
         return (mom_x, mom_y)
 
-    def evaluate_pressure_gradient(
-        self, mesh: "Mesh"
-    ) -> Tuple[xp.array, xp.array]:
+    def evaluate_pressure_gradient(self) -> Tuple[xp.array, xp.array]:
         r"""
         Compute :math:`\left(\frac{\partial p}{\partial x}, \frac{\partial p}{\partial y}\right)`
-        at cell centers.
+        at cell faces.
 
-        :param mesh: instance of the :class:`Mesh` class
-        :type mesh: Mesh
         :rtype: Tuple[xp.array, xp.array]
         """
         return tuple(
             [
-                evaluate_derivative_staggered(mesh.p, mesh.d, ax)
+                evaluate_derivative_staggered(self.mesh.p, self.mesh.d, ax)
                 for ax in [1, 0]
             ]
         )
 
-    def evaluate_divergence(self, mesh: "Mesh") -> xp.array:
+    def evaluate_divergence(self) -> xp.array:
         r"""
         Compute :math:`\nabla\cdot \mathbf{u} = \partial_x u + \partial_y v`
         at cell centers.
 
-        :param mesh: instance of the :class:`Mesh` class
-        :type mesh: Mesh
         :rtype: xp.array
         """
-        fields = [mesh.u_ext, mesh.v_ext]
-        axes = xp.flipud(xp.arange(mesh.p.ndim, dtype=xp.int32))  # [1, 0]
-        div = xp.zeros_like(mesh.p)
+        fields = [self.mesh.u_ext, self.mesh.v_ext]
+        axes = xp.flipud(xp.arange(self.mesh.p.ndim, dtype=xp.int32))  # [1, 0]
+        div = xp.zeros_like(self.mesh.p)
         for i, f in enumerate(fields):
             slc = [
                 slice(None) if j == axes[i] else slice(1, -1)
                 for j in range(len(axes))
             ]
-            div += evaluate_derivative_staggered(f, mesh.d, axis=axes[i])[
+            div += evaluate_derivative_staggered(f, self.mesh.d, axis=axes[i])[
                 tuple(slc)
             ]
         return div
 
     def assemble_gradient_matrix(self):
         r"""
-        Instatiate the attribute :code:`self.G`, containing the matrix
-        representation of the gradient operator defined in 
+        Instantiate the attribute :code:`self.G`, containing the matrix
+        representation of the gradient operator defined in
         :func:`evaluate_gradient`.
         """
-        rows, cols, rows_extract, cols_query = gradient_sparsity_pattern(self.mesh)
-        data = gradient_data(self.mesh, self, rows_extract, cols_query, 1.0)
+        rows, cols, rows_extract, cols_query = gradient_sparsity_pattern(
+            self.mesh
+        )
+        data = gradient_data(self, rows_extract, cols_query, 1.0)
         self.G = assemble_matrix(rows, cols, data)
-    
+
     def assemble_divergence_matrix(self):
         r"""
-        Instatiate the attribute :code:`self.D`, containing the matrix
-        representation of the divergence operator defined in 
+        Instantiate the attribute :code:`self.D`, containing the matrix
+        representation of the divergence operator defined in
         :func:`evaluate_divergence`.
         """
-        rows, cols, rows_extract, cols_query = divergence_sparsity_pattern(self.mesh)
-        data = divergence_data(self.mesh, self, rows_extract, cols_query, 1.0)
+        rows, cols, rows_extract, cols_query = divergence_sparsity_pattern(
+            self.mesh
+        )
+        data = divergence_data(self, rows_extract, cols_query, 1.0)
         self.D = assemble_matrix(rows, cols, data)
 
+    def assemble_laplacian_matrix(self):
+        r"""
+        Instantiate the attribute :code:`self.L`, containing the matrix
+        representation of the pressure laplacian operator
+        :math:`L = D G`, where :math:`D` and :math:`G` are the divergence
+        and gradient operators, respectively.
+        """
+        self.L = self.D.dot(self.G)
+
+    def augment_pressure_laplacian(self):
+        r"""
+        The discrete laplacian :math:`L = DG` (where :math:`D` and :math:`G`
+        are the discrete divergence and gradient operators)
+        is singular with a one-dimensional right nullspace spanned
+        by :math:`v = const`. The left nullspace :math:`w` is unknown,
+        but can be computed easily following the approach in section
+        3.3 of [Padovan2021]_.
+        We then update :code:`self.L` to
+
+        .. math::
+
+            L_a = \begin{bmatrix}
+                L & v \\ w^T & 0
+            \end{bmatrix}
+
+        which is invertible.
+
+        References
+        ----------
+        .. [Padovan2021] Padovan and Rowley, *A computationally efficient
+            approach for the removal of the phase shift singularity in
+            harmonic resolvent analysis*, arXiv:2102.09678, 2021
+        """
+        v = xp.ones((xp.prod(self.mesh.p.shape), 1))
+        v /= xp.linalg.norm(v)
+        M = sps.bmat([[self.L.T, v], [v.T, [0]]], format="csc")
+        rhs = xp.zeros(M.shape[-1])
+        rhs[-1] = 1.0
+        w = sps.linalg.spsolve(M, rhs)
+        w = w[:-1] / xp.linalg.norm(w[:-1])
+        self.La = sps.bmat(
+            [[self.L, v], [w.reshape(1, -1), [0]]], format="csc"
+        )
+
+    def evaluate_right_hand_side(self, t, q):
+        r"""
+        Compute
+
+        .. math::
+
+            \mathbf{r}(\mathbf{u}) = -\mathbf{u}\cdot\nabla\mathbf{u} +
+            Re^{-1}\Delta \mathbf{u} + \mathbf{f}(t)
+
+        where :math:`\mathbf{u}` is the continuous-in-space velocity vector and
+        :math:`q = (u_h, v_h) \in \mathbb{R}^n` contains the spatially-discretized
+        velocity vector.
+
+        :param t: time
+        :type t: float
+        :param q: vector containing the velocity vector at collocation points
+        :type q: xp.array
+
+        :rtype: xp.array
+        """
+        vector_to_fields(t, q, self.mesh, self.bcs)
+        xmom, ymom = self.evaluate_momentum_equation()
+        return xp.concatenate((xmom.reshape(-1), ymom.reshape(-1)))
+
+    def enforce_divergence_free(self, t, q):
+        r"""
+        Compute :math:`q - G \Delta^{-1} D q`.
+
+        :param t: time
+        :type t: float
+        :param q: vector containing the velocity vector at collocation points
+        :type q: xp.array
+        :rtype: xp.array
+        """
+        vector_to_fields(t, q, self.mesh, self.bcs)
+        return q - self.G.dot(
+            self.LuLa.solve(
+                xp.concatenate((self.evaluate_divergence().reshape(-1), [0]))
+            )[:-1]
+        )

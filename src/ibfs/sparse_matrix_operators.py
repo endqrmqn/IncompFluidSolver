@@ -4,13 +4,19 @@ import scipy.sparse as sps
 
 if TYPE_CHECKING:
     from .mesh import Mesh
+    from .spatial_operators import SpatialOperators
+
+from .helpers import (
+    vector_to_fields,
+    zero_out_fields,
+)
 
 
 def gradient_sparsity_pattern(
-    mesh: "Mesh"
+    mesh: "Mesh",
 ) -> Tuple[xp.array, xp.array, xp.array, xp.array]:
     r"""
-    Compute the sparsity pattern for the gradient operator in 
+    Compute the sparsity pattern for the gradient operator in
     COO format.
 
     :param mesh: instance of the :class:`Mesh` class
@@ -70,10 +76,11 @@ def gradient_sparsity_pattern(
     cols = xp.asarray(cols_mat)
     return (rows, cols, rows_mat_extract, cols_mat_query)
 
+
 def divergence_sparsity_pattern(mesh: "Mesh"):
     r"""
-    Compute the sparsity pattern for the divergence operator in 
-    COO format. 
+    Compute the sparsity pattern for the divergence operator in
+    COO format.
 
     :param mesh: instance of the :class:`Mesh` class
     :type mesh: Mesh
@@ -136,30 +143,37 @@ def divergence_sparsity_pattern(mesh: "Mesh"):
 
     return (rows, cols, rows_mat_extract, cols_mat_query)
 
-def gradient_data(mesh, spatial_ops, rows_extract, cols_query, eps):
+
+def gradient_data(
+    spatial_ops: "SpatialOperators", rows_extract, cols_query, eps
+):
+    mesh = spatial_ops.mesh
+
     def grad_fun(p):
         mesh.p[:, :] = p.reshape(*mesh.p.shape)
-        dpdx, dpdy = spatial_ops.evaluate_pressure_gradient(mesh)
-        dpdx = dpdx.reshape(-1)
-        dpdy = dpdy.reshape(-1)
-        return xp.concatenate((dpdx, dpdy))
-    Q = xp.zeros(xp.prod(mesh.p.shape))
-    return compute_matrix_data(
-        rows_extract, cols_query, grad_fun, Q, eps
-    )
+        dpdx, dpdy = spatial_ops.evaluate_pressure_gradient()
+        mesh.p[:, :] = 0.0
+        return xp.concatenate((dpdx.reshape(-1), dpdy.reshape(-1)))
 
-def divergence_data(mesh, spatial_ops, rows_extract, cols_query, eps):
+    Q = xp.zeros(xp.prod(mesh.p.shape))
+    return compute_matrix_data(rows_extract, cols_query, grad_fun, Q, eps)
+
+
+def divergence_data(
+    spatial_ops: "SpatialOperators", rows_extract, cols_query, eps
+):
     def div_fun(vec):
-        szu = xp.prod(mesh.u_int.shape)
-        mesh.u_ext *= 0.0
-        mesh.v_ext *= 0.0
-        mesh.u_int[:, :] = vec[:szu].reshape(*mesh.u_int.shape)
-        mesh.v_int[:, :] = vec[szu:].reshape(*mesh.v_int.shape)
-        return spatial_ops.evaluate_divergence(mesh).reshape(-1)
-    Q = xp.zeros(xp.prod(mesh.u_int.shape) + xp.prod(mesh.v_int.shape))
-    return compute_matrix_data(
-        rows_extract, cols_query, div_fun, Q, eps
+        vector_to_fields(0.0, vec, spatial_ops.mesh, spatial_ops.bcs)
+        div = spatial_ops.evaluate_divergence().reshape(-1)
+        zero_out_fields(spatial_ops.mesh)
+        return div
+
+    Q = xp.zeros(
+        xp.prod(spatial_ops.mesh.u_int.shape)
+        + xp.prod(spatial_ops.mesh.v_int.shape)
     )
+    return compute_matrix_data(rows_extract, cols_query, div_fun, Q, eps)
+
 
 def compute_matrix_data(rows_extract, cols_query, fun, Q, eps):
     data = []
@@ -170,12 +184,14 @@ def compute_matrix_data(rows_extract, cols_query, fun, Q, eps):
         data.extend(q[rows_extract[k]])
     return data
 
+
 def assemble_matrix(rows, cols, data):
     nr = xp.max(rows) + 1
     nc = xp.max(cols) + 1
     rows, cols, data = eliminate_zeros(rows, cols, data)
     return sps.csc_matrix((data, (rows, cols)), shape=(nr, nc))
-    
+
+
 def eliminate_zeros(rows, cols, data):
     idces = xp.argwhere(xp.abs(data) <= 1e-13)
     rows = xp.delete(rows, idces)
