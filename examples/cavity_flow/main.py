@@ -2,11 +2,11 @@ import numpy as xp
 import ibfs
 import matplotlib.pyplot as plt
 
-Re = 8300
+Re = 1000
 
 x0, x1 = -0.5, 0.5
 y0, y1 = -0.5, 0.5
-nx, ny = 100, 100
+nx, ny = 200, 200
 
 mesh = ibfs.Mesh(x0, x1, nx, y0, y1, ny)
 
@@ -50,28 +50,48 @@ bcvvel = ibfs.BoundaryConditions(
 bcs = [bcuvel, bcvvel]
 spops = ibfs.SpatialOperators(Re, mesh, bcs)
 
-dt = 1e-2
+dt = 5e-3
 tstep = ibfs.TimeStepper(dt, spops, "RK2")
 
-#%%
+# %%
 q0 = xp.zeros(xp.prod(mesh.u_int.shape) + xp.prod(mesh.v_int.shape))
-Q, tsave = tstep.solve(0.0, 100, 10, q0)
+Q, tsave = tstep.solve(0.0, 200, 10, q0)
 
 # %%
 energy = xp.linalg.norm(Q, axis=0)
 plt.figure()
 plt.plot(tsave, energy)
 
-#%%
+# %%
 ibfs.vector_to_fields(0.0, Q[:, -1], mesh, bcs)
 Xu, Yu, Xv, Yv, _, _ = mesh.generate_meshgrids(False)
 
 plt.figure()
-plt.contourf(Xu, Yu, mesh.u_ext, cmap='bwr', levels=200)
+plt.contourf(Xu, Yu, mesh.u_ext, cmap="bwr", levels=200)
 ax = plt.gca()
-ax.set_aspect('equal')
+ax.set_aspect("equal")
 
 plt.figure()
-plt.contourf(Xv, Yv, mesh.v_ext, cmap='bwr', levels=200)
+plt.contourf(Xv, Yv, mesh.v_ext, cmap="bwr", levels=200)
 ax = plt.gca()
+ax.set_aspect("equal")
+
+# %%
+idx = xp.argmin(xp.abs(Xu[0,]))
+uvel = mesh.u_ext[:, idx]
+
+data_ghia = xp.loadtxt('ghia_data.txt')[:, 1:]
+Re_ghia = xp.loadtxt('ghia_Re.txt')
+idx = xp.argmin(xp.abs(Re_ghia - Re))
+uvel_ghia = data_ghia[:, idx + 1]
+
+plt.figure()
+plt.plot(uvel[1:-1], Yu[1:-1, 0] + y1, "k", label="Present")
+plt.plot(uvel_ghia, data_ghia[:, 0], "ro", label="Ghia et al., (1982)")
+ax = plt.gca()
+ax.set_xlabel(r"$u$ velocity")
+ax.set_ylabel(r"$y$")
 ax.set_aspect('equal')
+plt.legend()
+
+#%%

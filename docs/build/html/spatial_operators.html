@@ -20,8 +20,8 @@
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Boundary Conditions" href="boundary_conditions.html" />
-    <link rel="prev" title="Mesh" href="mesh.html" /> 
+    <link rel="next" title="Sparse Matrix Operators" href="sparse_matrix_operators.html" />
+    <link rel="prev" title="Boundary Conditions" href="boundary_conditions.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -47,19 +47,27 @@
 <ul class="current">
 <li class="toctree-l1 current"><a class="reference internal" href="api-reference.html">API-reference</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="mesh.html">Mesh</a></li>
+<li class="toctree-l2"><a class="reference internal" href="boundary_conditions.html">Boundary Conditions</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Spatial Operators</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#ibfs.spatial_operators.SpatialOperators"><code class="docutils literal notranslate"><span class="pre">SpatialOperators</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#ibfs.spatial_operators.SpatialOperators.assemble_divergence_matrix"><code class="docutils literal notranslate"><span class="pre">SpatialOperators.assemble_divergence_matrix()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ibfs.spatial_operators.SpatialOperators.assemble_gradient_matrix"><code class="docutils literal notranslate"><span class="pre">SpatialOperators.assemble_gradient_matrix()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ibfs.spatial_operators.SpatialOperators.assemble_laplacian_matrix"><code class="docutils literal notranslate"><span class="pre">SpatialOperators.assemble_laplacian_matrix()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ibfs.spatial_operators.SpatialOperators.augment_pressure_laplacian"><code class="docutils literal notranslate"><span class="pre">SpatialOperators.augment_pressure_laplacian()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ibfs.spatial_operators.SpatialOperators.enforce_divergence_free"><code class="docutils literal notranslate"><span class="pre">SpatialOperators.enforce_divergence_free()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#ibfs.spatial_operators.SpatialOperators.evaluate_divergence"><code class="docutils literal notranslate"><span class="pre">SpatialOperators.evaluate_divergence()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#ibfs.spatial_operators.SpatialOperators.evaluate_laplacian"><code class="docutils literal notranslate"><span class="pre">SpatialOperators.evaluate_laplacian()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#ibfs.spatial_operators.SpatialOperators.evaluate_momentum_equation"><code class="docutils literal notranslate"><span class="pre">SpatialOperators.evaluate_momentum_equation()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#ibfs.spatial_operators.SpatialOperators.evaluate_pressure_gradient"><code class="docutils literal notranslate"><span class="pre">SpatialOperators.evaluate_pressure_gradient()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ibfs.spatial_operators.SpatialOperators.evaluate_right_hand_side"><code class="docutils literal notranslate"><span class="pre">SpatialOperators.evaluate_right_hand_side()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#ibfs.spatial_operators.SpatialOperators.evaluate_streamwise_advection"><code class="docutils literal notranslate"><span class="pre">SpatialOperators.evaluate_streamwise_advection()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#ibfs.spatial_operators.SpatialOperators.evaluate_wallnormal_advection"><code class="docutils literal notranslate"><span class="pre">SpatialOperators.evaluate_wallnormal_advection()</span></code></a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="boundary_conditions.html">Boundary Conditions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sparse_matrix_operators.html">Sparse Matrix Operators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="time_stepper.html">Time Steppers</a></li>
 </ul>
 </li>
 </ul>
@@ -93,24 +101,95 @@
 <span id="spatial-operators"></span><h1>Spatial Operators<a class="headerlink" href="#module-ibfs.spatial_operators" title="Link to this heading"></a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="ibfs.spatial_operators.SpatialOperators">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ibfs.spatial_operators.</span></span><span class="sig-name descname"><span class="pre">SpatialOperators</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">Re</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ibfs/spatial_operators.html#SpatialOperators"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ibfs.spatial_operators.SpatialOperators" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ibfs.spatial_operators.</span></span><span class="sig-name descname"><span class="pre">SpatialOperators</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">Re</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mesh</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="mesh.html#ibfs.mesh.Mesh" title="ibfs.mesh.Mesh"><span class="pre">Mesh</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">bcs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="boundary_conditions.html#ibfs.boundary_conditions.BoundaryConditions" title="ibfs.boundary_conditions.BoundaryConditions"><span class="pre">BoundaryConditions</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ibfs/spatial_operators.html#SpatialOperators"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ibfs.spatial_operators.SpatialOperators" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>Class to evaluate the right-hand side of the Navier-Stokes equation.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>Re</strong> (<em>float</em>) – Reynolds number</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>Re</strong> (<em>float</em>) – Reynolds number</p></li>
+<li><p><strong>mesh</strong> (<a class="reference internal" href="mesh.html#ibfs.mesh.Mesh" title="ibfs.mesh.Mesh"><em>Mesh</em></a>) – an instance of the <code class="xref py py-class docutils literal notranslate"><span class="pre">Mesh</span></code> class</p></li>
+<li><p><strong>bcs</strong> (<em>Tuple</em><em>[</em><a class="reference internal" href="boundary_conditions.html#ibfs.boundary_conditions.BoundaryConditions" title="ibfs.boundary_conditions.BoundaryConditions"><em>BoundaryConditions</em></a><em>]</em>) – a tuple of instances of the <code class="xref py py-class docutils literal notranslate"><span class="pre">BoundaryConditions</span></code> class
+(the length of the tuple is equal to the number of velocity components)</p></li>
+</ul>
 </dd>
 </dl>
 <dl class="py method">
-<dt class="sig sig-object py" id="ibfs.spatial_operators.SpatialOperators.evaluate_divergence">
-<span class="sig-name descname"><span class="pre">evaluate_divergence</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mesh</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="mesh.html#ibfs.mesh.Mesh" title="ibfs.mesh.Mesh"><span class="pre">Mesh</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">array</span></span></span><a class="reference internal" href="_modules/ibfs/spatial_operators.html#SpatialOperators.evaluate_divergence"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ibfs.spatial_operators.SpatialOperators.evaluate_divergence" title="Link to this definition"></a></dt>
-<dd><p>Compute <span class="math notranslate nohighlight">\(\nabla\cdot \mathbf{u} = \partial_x u + \partial_y v\)</span>.</p>
+<dt class="sig sig-object py" id="ibfs.spatial_operators.SpatialOperators.assemble_divergence_matrix">
+<span class="sig-name descname"><span class="pre">assemble_divergence_matrix</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ibfs/spatial_operators.html#SpatialOperators.assemble_divergence_matrix"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ibfs.spatial_operators.SpatialOperators.assemble_divergence_matrix" title="Link to this definition"></a></dt>
+<dd><p>Instantiate the attribute <code class="code docutils literal notranslate"><span class="pre">self.D</span></code>, containing the matrix
+representation of the divergence operator defined in
+<a class="reference internal" href="#ibfs.spatial_operators.SpatialOperators.evaluate_divergence" title="ibfs.spatial_operators.SpatialOperators.evaluate_divergence"><code class="xref py py-func docutils literal notranslate"><span class="pre">evaluate_divergence()</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ibfs.spatial_operators.SpatialOperators.assemble_gradient_matrix">
+<span class="sig-name descname"><span class="pre">assemble_gradient_matrix</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ibfs/spatial_operators.html#SpatialOperators.assemble_gradient_matrix"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ibfs.spatial_operators.SpatialOperators.assemble_gradient_matrix" title="Link to this definition"></a></dt>
+<dd><p>Instantiate the attribute <code class="code docutils literal notranslate"><span class="pre">self.G</span></code>, containing the matrix
+representation of the gradient operator defined in
+<code class="xref py py-func docutils literal notranslate"><span class="pre">evaluate_gradient()</span></code>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ibfs.spatial_operators.SpatialOperators.assemble_laplacian_matrix">
+<span class="sig-name descname"><span class="pre">assemble_laplacian_matrix</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ibfs/spatial_operators.html#SpatialOperators.assemble_laplacian_matrix"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ibfs.spatial_operators.SpatialOperators.assemble_laplacian_matrix" title="Link to this definition"></a></dt>
+<dd><p>Instantiate the attribute <code class="code docutils literal notranslate"><span class="pre">self.L</span></code>, containing the matrix
+representation of the pressure laplacian operator
+<span class="math notranslate nohighlight">\(L = D G\)</span>, where <span class="math notranslate nohighlight">\(D\)</span> and <span class="math notranslate nohighlight">\(G\)</span> are the divergence
+and gradient operators, respectively.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ibfs.spatial_operators.SpatialOperators.augment_pressure_laplacian">
+<span class="sig-name descname"><span class="pre">augment_pressure_laplacian</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ibfs/spatial_operators.html#SpatialOperators.augment_pressure_laplacian"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ibfs.spatial_operators.SpatialOperators.augment_pressure_laplacian" title="Link to this definition"></a></dt>
+<dd><p>The discrete laplacian <span class="math notranslate nohighlight">\(L = DG\)</span> (where <span class="math notranslate nohighlight">\(D\)</span> and <span class="math notranslate nohighlight">\(G\)</span>
+are the discrete divergence and gradient operators)
+is singular with a one-dimensional right nullspace spanned
+by <span class="math notranslate nohighlight">\(v = const\)</span>. The left nullspace <span class="math notranslate nohighlight">\(w\)</span> is unknown,
+but can be computed easily following the approach in section
+3.3 of <a class="reference internal" href="#padovan2021" id="id1"><span>[Padovan2021]</span></a>.
+We then update <code class="code docutils literal notranslate"><span class="pre">self.L</span></code> to</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}L_a = \begin{bmatrix}
+    L &amp; v \\ w^T &amp; 0
+\end{bmatrix}\end{split}\]</div>
+<p>which is invertible.</p>
+<p class="rubric">References</p>
+<div role="list" class="citation-list">
+<div class="citation" id="padovan2021" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">Padovan2021</a><span class="fn-bracket">]</span></span>
+<p>Padovan and Rowley, <em>A computationally efficient
+approach for the removal of the phase shift singularity in
+harmonic resolvent analysis</em>, arXiv:2102.09678, 2021</p>
+</div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ibfs.spatial_operators.SpatialOperators.enforce_divergence_free">
+<span class="sig-name descname"><span class="pre">enforce_divergence_free</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ibfs/spatial_operators.html#SpatialOperators.enforce_divergence_free"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ibfs.spatial_operators.SpatialOperators.enforce_divergence_free" title="Link to this definition"></a></dt>
+<dd><p>Compute <span class="math notranslate nohighlight">\(q - G \Delta^{-1} D q\)</span>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>mesh</strong> (<a class="reference internal" href="mesh.html#ibfs.mesh.Mesh" title="ibfs.mesh.Mesh"><em>Mesh</em></a>) – instance of the <code class="xref py py-class docutils literal notranslate"><span class="pre">Mesh</span></code> class</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>t</strong> (<em>float</em>) – time</p></li>
+<li><p><strong>q</strong> (<em>xp.array</em>) – vector containing the velocity vector at collocation points</p></li>
+</ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>xp.array</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ibfs.spatial_operators.SpatialOperators.evaluate_divergence">
+<span class="sig-name descname"><span class="pre">evaluate_divergence</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">array</span></span></span><a class="reference internal" href="_modules/ibfs/spatial_operators.html#SpatialOperators.evaluate_divergence"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ibfs.spatial_operators.SpatialOperators.evaluate_divergence" title="Link to this definition"></a></dt>
+<dd><p>Compute <span class="math notranslate nohighlight">\(\nabla\cdot \mathbf{u} = \partial_x u + \partial_y v\)</span>
+at cell centers.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>xp.array</p>
 </dd>
 </dl>
 </dd></dl>
@@ -141,33 +220,49 @@ the dimension of the output array will be <span class="math notranslate nohighli
 
 <dl class="py method">
 <dt class="sig sig-object py" id="ibfs.spatial_operators.SpatialOperators.evaluate_momentum_equation">
-<span class="sig-name descname"><span class="pre">evaluate_momentum_equation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mesh</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="mesh.html#ibfs.mesh.Mesh" title="ibfs.mesh.Mesh"><span class="pre">Mesh</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">array</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">array</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/ibfs/spatial_operators.html#SpatialOperators.evaluate_momentum_equation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ibfs.spatial_operators.SpatialOperators.evaluate_momentum_equation" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">evaluate_momentum_equation</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">array</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">array</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/ibfs/spatial_operators.html#SpatialOperators.evaluate_momentum_equation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ibfs.spatial_operators.SpatialOperators.evaluate_momentum_equation" title="Link to this definition"></a></dt>
 <dd><p>Evaluate the discretized momentum equation (without pressure) in the
-incompressible Navier-Stokes equations. It calls the functions
-<a class="reference internal" href="#ibfs.spatial_operators.SpatialOperators.evaluate_laplacian" title="ibfs.spatial_operators.SpatialOperators.evaluate_laplacian"><code class="xref py py-func docutils literal notranslate"><span class="pre">evaluate_laplacian()</span></code></a>, <a class="reference internal" href="#ibfs.spatial_operators.SpatialOperators.evaluate_streamwise_advection" title="ibfs.spatial_operators.SpatialOperators.evaluate_streamwise_advection"><code class="xref py py-func docutils literal notranslate"><span class="pre">evaluate_streamwise_advection()</span></code></a> and
-<a class="reference internal" href="#ibfs.spatial_operators.SpatialOperators.evaluate_wallnormal_advection" title="ibfs.spatial_operators.SpatialOperators.evaluate_wallnormal_advection"><code class="xref py py-func docutils literal notranslate"><span class="pre">evaluate_wallnormal_advection()</span></code></a>, and it returns a 2-tuple
+incompressible Navier-Stokes equations. Returns a 2-tuple
 containing the evaluation of the <span class="math notranslate nohighlight">\(x\)</span>- and <span class="math notranslate nohighlight">\(y\)</span>-momentum
 equations.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>mesh</strong> (<a class="reference internal" href="mesh.html#ibfs.mesh.Mesh" title="ibfs.mesh.Mesh"><em>Mesh</em></a>) – instance of the class <code class="xref py py-class docutils literal notranslate"><span class="pre">Mesh</span></code></p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>Tuple[xp.array, xp.array]</p>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple[xp.array, xp.array]</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="ibfs.spatial_operators.SpatialOperators.evaluate_pressure_gradient">
-<span class="sig-name descname"><span class="pre">evaluate_pressure_gradient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mesh</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="mesh.html#ibfs.mesh.Mesh" title="ibfs.mesh.Mesh"><span class="pre">Mesh</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">array</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">array</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/ibfs/spatial_operators.html#SpatialOperators.evaluate_pressure_gradient"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ibfs.spatial_operators.SpatialOperators.evaluate_pressure_gradient" title="Link to this definition"></a></dt>
-<dd><p>Compute <span class="math notranslate nohighlight">\(\left(\frac{\partial p}{\partial x}, \frac{\partial p}{\partial y}\right)\)</span>.</p>
+<span class="sig-name descname"><span class="pre">evaluate_pressure_gradient</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">array</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">array</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/ibfs/spatial_operators.html#SpatialOperators.evaluate_pressure_gradient"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ibfs.spatial_operators.SpatialOperators.evaluate_pressure_gradient" title="Link to this definition"></a></dt>
+<dd><p>Compute <span class="math notranslate nohighlight">\(\left(\frac{\partial p}{\partial x}, \frac{\partial p}{\partial y}\right)\)</span>
+at cell faces.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple[xp.array, xp.array]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ibfs.spatial_operators.SpatialOperators.evaluate_right_hand_side">
+<span class="sig-name descname"><span class="pre">evaluate_right_hand_side</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ibfs/spatial_operators.html#SpatialOperators.evaluate_right_hand_side"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ibfs.spatial_operators.SpatialOperators.evaluate_right_hand_side" title="Link to this definition"></a></dt>
+<dd><p>Compute</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{r}(\mathbf{u}) = -\mathbf{u}\cdot\nabla\mathbf{u} +
+Re^{-1}\Delta \mathbf{u} + \mathbf{f}(t)\]</div>
+<p>where <span class="math notranslate nohighlight">\(\mathbf{u}\)</span> is the continuous-in-space velocity vector and
+<span class="math notranslate nohighlight">\(q = (u_h, v_h) \in \mathbb{R}^n\)</span> contains the spatially-discretized
+velocity vector.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>mesh</strong> (<a class="reference internal" href="mesh.html#ibfs.mesh.Mesh" title="ibfs.mesh.Mesh"><em>Mesh</em></a>) – instance of the <code class="xref py py-class docutils literal notranslate"><span class="pre">Mesh</span></code> class</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>t</strong> (<em>float</em>) – time</p></li>
+<li><p><strong>q</strong> (<em>xp.array</em>) – vector containing the velocity vector at collocation points</p></li>
+</ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>Tuple[xp.array, xp.array]</p>
+<dd class="field-even"><p>xp.array</p>
 </dd>
 </dl>
 </dd></dl>
@@ -236,8 +331,8 @@ centers in the <span class="math notranslate nohighlight">\(y\)</span> and <span
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="mesh.html" class="btn btn-neutral float-left" title="Mesh" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="boundary_conditions.html" class="btn btn-neutral float-right" title="Boundary Conditions" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="boundary_conditions.html" class="btn btn-neutral float-left" title="Boundary Conditions" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="sparse_matrix_operators.html" class="btn btn-neutral float-right" title="Sparse Matrix Operators" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

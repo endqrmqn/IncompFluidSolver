@@ -147,15 +147,13 @@ def divergence_sparsity_pattern(mesh: "Mesh"):
 def gradient_data(
     spatial_ops: "SpatialOperators", rows_extract, cols_query, eps
 ):
-    mesh = spatial_ops.mesh
-
     def grad_fun(p):
-        mesh.p[:, :] = p.reshape(*mesh.p.shape)
+        spatial_ops.mesh.p[:, :] = p.reshape(*spatial_ops.mesh.p.shape)
         dpdx, dpdy = spatial_ops.evaluate_pressure_gradient()
-        mesh.p[:, :] = 0.0
+        spatial_ops.mesh.p[:, :] = 0.0
         return xp.concatenate((dpdx.reshape(-1), dpdy.reshape(-1)))
 
-    Q = xp.zeros(xp.prod(mesh.p.shape))
+    Q = xp.zeros(xp.prod(spatial_ops.mesh.p.shape))
     return compute_matrix_data(rows_extract, cols_query, grad_fun, Q, eps)
 
 

@@ -45,10 +45,11 @@ class SpatialOperators:
         self.mesh = mesh
         self.bcs = bcs
 
-        self.assemble_divergence_matrix()
-        self.assemble_gradient_matrix()
-        self.assemble_laplacian_matrix()
         if not test:
+            self.assemble_divergence_matrix()
+            self.assemble_gradient_matrix()
+            self.assemble_laplacian_matrix()
+
             self.augment_pressure_laplacian()
             self.LuLa = sps.linalg.splu(self.La)
 
@@ -119,7 +120,7 @@ class SpatialOperators:
             + u_interp_y[1:, 1:-1] * v_interp_x[1:, 1:-1]
             - u_interp_y[:-1, 1:-1] * v_interp_x[:-1, 1:-1]
         ) * d
-
+    
     def evaluate_wallnormal_advection(
         self, u: xp.array, v: xp.array, d: float
     ) -> xp.array:

@@ -22,7 +22,7 @@ def evaluate_fun_and_derivatives(X, Y, fun, xp):
 
 def analytical_functions():
     r"""Create analytical functions for velocities and pressure."""
-    alpha, beta = 10, 20
+    alpha, beta = 10, 10
     pfun = lambda X, Y: 1 - alpha * torch.exp(
         -beta * ((Y - 0.0) ** 4 + (X - 0.0) ** 2)
     )
@@ -52,7 +52,7 @@ def instantiate_boundary_conditions(mesh):
         fun_tb_u,
         fun_tb_u,
     )
-    
+
     # V velocity boundary conditions
     ones_lr_v = xp.ones(mesh.v_int.shape[0])
     ones_tb_v = xp.ones(mesh.v_int.shape[-1])

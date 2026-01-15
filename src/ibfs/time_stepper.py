@@ -44,8 +44,31 @@ class TimeStepper:
         self.scheme = scheme
 
     def solve(
-        self, t0: float, t1: float, mjump: int, q0: xp.array, verbose: Optional[bool]=True,
+        self,
+        t0: float,
+        t1: float,
+        mjump: int,
+        q0: xp.array,
+        verbose: Optional[bool] = True,
     ) -> Tuple[xp.array, xp.array]:
+        r"""
+        Evolve the Navier-Stokes equations. This function returns a tuple with the solution
+        :math:`Q\in\mathbb{R}^{n\times n_t}` and the time instances :math:`t\in\mathbb{R}^{n_t}`
+        at which the solution was saved.
+
+        :param t0: initial time
+        :type t0: float
+        :param t1: final time
+        :type t1: float
+        :param mjump: save solution every :code:`mjump` time steps
+        :type mjump: int
+        :param q0: initial condition (dimenions of the interior nodes)
+        :type q0: xp.array
+        :param verbose: print advancement if :code:`True`, do not if :code:`False`
+        :type verbose: Optional[bool], default is :code:`True`
+
+        :rtype: Tuple[xp.array, xp.array]
+        """
         timevec = xp.arange(t0, t1, self.dt)
         tsave = timevec[::mjump]
         q = q0.copy()
@@ -56,9 +79,7 @@ class TimeStepper:
             k = 0
             for i in range(1, len(timevec)):
                 if verbose:
-                    print(
-                        f"Time step {i} out of {len(timevec)}"
-                    )
+                    print(f"Time step {i} out of {len(timevec)}")
                 # First stage
                 t = timevec[i - 1]
                 qs1[:] = q + (
@@ -74,6 +95,8 @@ class TimeStepper:
 
                 # Save data
                 if xp.mod(i, mjump) == 0:
+                    if xp.isnan(q).any() or xp.max(xp.abs(q)) > 1e4:
+                        raise ValueError(f"Blow up detected.")
                     k += 1
                     Q[:, k] = q if k < Q.shape[-1] else None
 

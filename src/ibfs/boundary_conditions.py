@@ -1,30 +1,30 @@
 import numpy as xp
-import scipy as sp
 from .helpers import (
     interpolate_1d,
     evaluate_derivative,
     evaluate_derivative_staggered,
 )
-from typing import Tuple, Optional, Callable
+from typing import Optional, Callable, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .mesh import Mesh
 
 
 class BoundaryConditions:
     r"""
     Class to define and impose boundary conditions on the velocity fields.
+    The currently available boundary conditions are :code:`'dirichlet'` or :code:`'neumann'`.
 
     :param field_name: one of :code:`'u'` or :code:`'v'`
     :type field_name: str
     :param x0: type of boundary condition for the left/inflow boundary.
-        One of :code:`'dirichlet'`, :code:`'interp'`, :code:`'neumann'` or :code:`'periodic'`.
+        One of :code:`'dirichlet'` or :code:`'neumann'`.
     :type x0: str
     :param x1: type of boundary condition for the right/outflow boundary.
-        One of :code:`'dirichlet'`, :code:`'interp'`, :code:`'neumann'` or :code:`'periodic'`.
     :type x1: str
     :param y0: type of boundary condition for the bottom boundary.
-        One of :code:`'dirichlet'`, :code:`'interp'` or :code:`'neumann'`.
     :type y0: str
     :param y1: type of boundary condition for the top boundary.
-        One of :code:`'dirichlet'`, :code:`'interp'` or :code:`'neumann'`.
     :type y1: str
     :param fun_x0: function :math:`f: \mathbb{R}\to\mathbb{R}^{n_{y,int}}: t\mapsto f(t)`
         to evaluate the boundary condition. Here, :math:`t` is time and :math:`n_{y,int}` is the
@@ -99,10 +99,11 @@ class BoundaryConditions:
     def impose_boundary_conditions(self, field: xp.array, t: float) -> None:
         r"""
         Impose boundary conditions on the velocity field. This function modifies
-        the input :code:`field` in place.
+        the input :code:`field` in place. This field is usually :code:`mesh.u_ext` or
+        :code:`mesh.v_ext`, with :code:`mesh` and instance of the :class:`Mesh` class.
 
         :param field: 2D array contaning either the streamwise or wall-normal velocity field
-            (Usually :code:`mesh.u_ext` or :code:`mesh.v_ext`.)
+            (Usually :code:`mesh.u_ext` or :code:`mesh.v_ext`, as indicated previously.)
         :type field: xp.array
         :param t: value of time at which to evaluate the dirichlet boundary conditions (if any)
         :type t: float

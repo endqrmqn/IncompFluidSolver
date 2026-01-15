@@ -6,5 +6,7 @@ API-reference
    :caption: Modules
 
    mesh.rst
-   spatial_operators.rst
    boundary_conditions.rst
+   spatial_operators.rst
+   sparse_matrix_operators.rst
+   time_stepper.rst
