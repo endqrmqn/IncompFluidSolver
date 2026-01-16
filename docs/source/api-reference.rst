@@ -9,4 +9,5 @@ API-reference
    boundary_conditions.rst
    spatial_operators.rst
    sparse_matrix_operators.rst
+   immersed_body.rst
    time_stepper.rst

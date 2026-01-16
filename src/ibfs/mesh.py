@@ -51,6 +51,13 @@ class Mesh:
         self.y = dy * xp.arange(ny) + y0 + dy / 2
         self.d = dx
 
+        # Vectors containing the coordinates of the interior 
+        # u and v velocity nodes
+        self.xu = (self.x[1:] + self.x[:-1]) / 2
+        self.yu = self.y.copy()
+        self.xv = self.x.copy()
+        self.yv = (self.y[1:] + self.y[:-1]) / 2
+        
         # Pressure field
         self.p = xp.zeros((len(self.y), len(self.x)))
         # Streamwise velocity field (including and excluding boundaries)
