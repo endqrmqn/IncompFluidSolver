@@ -51,11 +51,11 @@ bcs = [bcuvel, bcvvel]
 spops = ibfs.SpatialOperators(Re, mesh, bcs)
 
 dt = 5e-3
-tstep = ibfs.TimeStepper(dt, spops, "RK2")
+tstep = ibfs.TimeStepper(dt, spops, None, scheme="RK2")
 
 # %%
 q0 = xp.zeros(xp.prod(mesh.u_int.shape) + xp.prod(mesh.v_int.shape))
-Q, tsave = tstep.solve(0.0, 200, 10, q0)
+Q, tsave = tstep.solve(0.0, 100, 10, q0)
 
 # %%
 energy = xp.linalg.norm(Q, axis=0)
@@ -80,8 +80,8 @@ ax.set_aspect("equal")
 idx = xp.argmin(xp.abs(Xu[0,]))
 uvel = mesh.u_ext[:, idx]
 
-data_ghia = xp.loadtxt('ghia_data.txt')[:, 1:]
-Re_ghia = xp.loadtxt('ghia_Re.txt')
+data_ghia = xp.loadtxt("ghia_data.txt")[:, 1:]
+Re_ghia = xp.loadtxt("ghia_Re.txt")
 idx = xp.argmin(xp.abs(Re_ghia - Re))
 uvel_ghia = data_ghia[:, idx + 1]
 
@@ -89,9 +89,9 @@ plt.figure()
 plt.plot(uvel[1:-1], Yu[1:-1, 0] + y1, "k", label="Present")
 plt.plot(uvel_ghia, data_ghia[:, 0], "ro", label="Ghia et al., (1982)")
 ax = plt.gca()
-ax.set_xlabel(r"$u$ velocity")
-ax.set_ylabel(r"$y$")
-ax.set_aspect('equal')
+ax.set_xlabel(r"$u / u_{\infty}$ velocity")
+ax.set_ylabel(r"$y / L$")
+ax.set_aspect("equal")
 plt.legend()
 
-#%%
+# %%

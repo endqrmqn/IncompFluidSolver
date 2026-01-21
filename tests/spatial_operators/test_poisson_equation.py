@@ -3,6 +3,7 @@ import ibfs
 import pytest
 from .. import pytest_utils as pyut
 
+
 def test_poisson_equation(domain_and_Reynolds):
     r"""
     Test for :func:`ibfs.SpatialOperators.enforce_divergence_free`.
@@ -16,11 +17,11 @@ def test_poisson_equation(domain_and_Reynolds):
     bcs = pyut.instantiate_boundary_conditions(mesh)
     nsop = ibfs.SpatialOperators(Re, mesh, bcs, False)
 
-    vec = xp.random.randn(xp.prod(mesh.u_int.shape) + xp.prod(mesh.v_int.shape))
+    vec = xp.random.randn(
+        xp.prod(mesh.u_int.shape) + xp.prod(mesh.v_int.shape)
+    )
     vec /= xp.linalg.norm(vec)
     Pvec = nsop.enforce_divergence_free(0.0, vec)
     ibfs.vector_to_fields(0.0, Pvec, mesh, bcs)
     error = xp.linalg.norm(nsop.evaluate_divergence().reshape(-1))
     assert error < 1e-10
-
-    

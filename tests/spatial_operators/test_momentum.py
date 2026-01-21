@@ -27,17 +27,25 @@ def test_momentum(domain_and_Reynolds, grid_sizes):
         u, du_dx, du_dy, d2u_dx2, d2u_dy2 = pyut.evaluate_fun_and_derivatives(
             Xu, Yu, ufun, xp
         )
-        v, dv_dx, dv_dy, _, _ = pyut.evaluate_fun_and_derivatives(Xu, Yu, vfun, xp)
-        fx_int = -2 * u * du_dx - v * du_dy - u * dv_dy + (d2u_dx2 + d2u_dy2) / Re
+        v, dv_dx, dv_dy, _, _ = pyut.evaluate_fun_and_derivatives(
+            Xu, Yu, vfun, xp
+        )
+        fx_int = (
+            -2 * u * du_dx - v * du_dy - u * dv_dy + (d2u_dx2 + d2u_dy2) / Re
+        )
         mesh.fx_int[:, :] = -fx_int[1:-1, 1:-1]
         # Y momentum forcing term
-        u, du_dx, du_dy, _, _ = pyut.evaluate_fun_and_derivatives(Xv, Yv, ufun, xp)
+        u, du_dx, du_dy, _, _ = pyut.evaluate_fun_and_derivatives(
+            Xv, Yv, ufun, xp
+        )
         v, dv_dx, dv_dy, d2v_dx2, d2v_dy2 = pyut.evaluate_fun_and_derivatives(
             Xv, Yv, vfun, xp
         )
-        fy_int = -2 * v * dv_dy - u * dv_dx - v * du_dx + (d2v_dx2 + d2v_dy2) / Re
+        fy_int = (
+            -2 * v * dv_dy - u * dv_dx - v * du_dx + (d2v_dx2 + d2v_dy2) / Re
+        )
         mesh.fy_int[:, :] = -fy_int[1:-1, 1:-1]
-        
+
         u, _, _, _, _ = pyut.evaluate_fun_and_derivatives(Xu, Yu, ufun, xp)
         v, _, _, _, _ = pyut.evaluate_fun_and_derivatives(Xv, Yv, vfun, xp)
         mesh.u_ext[:, :] = u

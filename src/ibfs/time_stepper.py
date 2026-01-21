@@ -1,10 +1,12 @@
 import numpy as xp
 import scipy.sparse as sps
+import tqdm
 from typing import Tuple, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .mesh import Mesh
     from .spatial_operators import SpatialOperators
+    from .immersed_body import ImmersedBody
 
 from .helpers import (
     interpolate_1d,
@@ -29,6 +31,8 @@ class TimeStepper:
     :type dt: float
     :param spatial_operators: an instance of the :class:`SpatialOperators` class
     :type spatial_operators: SpatialOperators
+    :param immersed_body: an instance of the :class:`ImmersedBody` class
+    :type immersed_body: Optional[ImmersedBody], default is :code:`None`
     :param scheme: numerical scheme
     :type scheme: Optional[str], default is :code:`'RK2'`
     """
@@ -37,11 +41,29 @@ class TimeStepper:
         self,
         dt,
         spatial_operators: "SpatialOperators",
+        immersed_body: Optional["ImmersedBody"] = None,
         scheme: Optional[str] = "RK2",
     ):
         self.dt = dt
         self.spatial_operators = spatial_operators
+        self.immersed_body = immersed_body
         self.scheme = scheme
+
+        self.assemble_operators()
+
+    def assemble_operators(self):
+        if self.scheme == "RK2":
+            self.evaluate_right_hand_side = (
+                self.spatial_operators.evaluate_right_hand_side
+            )
+            if self.immersed_body == None:
+                self.enforce_constraints = (
+                    self.spatial_operators.enforce_divergence_free
+                )
+            else:
+                self.enforce_constraints = (
+                    self.immersed_body.enforce_constraints
+                )
 
     def solve(
         self,
@@ -77,21 +99,21 @@ class TimeStepper:
         if self.scheme == "RK2":
             qs1 = xp.zeros_like(q)
             k = 0
-            for i in range(1, len(timevec)):
-                if verbose:
-                    print(f"Time step {i} out of {len(timevec)}")
+            iterable = range(1, len(timevec))
+            iterable = tqdm.tqdm(iterable) if verbose else iterable
+            for i in iterable:
                 # First stage
                 t = timevec[i - 1]
                 qs1[:] = q + (
                     self.dt / 2
                 ) * self.spatial_operators.evaluate_right_hand_side(t, q)
-                qs1[:] = self.spatial_operators.enforce_divergence_free(t, qs1)
+                qs1[:] = self.enforce_constraints(t, qs1)
                 # Second stage
                 t = (timevec[i - 1] + timevec[i]) / 2
                 q += self.dt * self.spatial_operators.evaluate_right_hand_side(
                     t, qs1
                 )
-                q[:] = self.spatial_operators.enforce_divergence_free(t, q)
+                q[:] = self.enforce_constraints(t, q)
 
                 # Save data
                 if xp.mod(i, mjump) == 0:

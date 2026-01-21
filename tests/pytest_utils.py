@@ -52,7 +52,7 @@ def instantiate_boundary_conditions(mesh):
         fun_tb_u,
         fun_tb_u,
     )
-    
+
     # V velocity boundary conditions
     ones_lr_v = xp.ones(mesh.v_int.shape[0])
     ones_tb_v = xp.ones(mesh.v_int.shape[-1])

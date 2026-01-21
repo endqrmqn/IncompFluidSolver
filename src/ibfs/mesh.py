@@ -41,7 +41,7 @@ class Mesh:
         dx = (x1 - x0) / nx
         dy = (y1 - y0) / ny
 
-        if xp.abs(dx - dy) > 1e-10:
+        if xp.abs(dx - dy) > 1e-12:
             raise ValueError(
                 f"dx and dy should be the same. Currently "
                 f"dx = {dx} and dy = {dy}"
@@ -51,13 +51,13 @@ class Mesh:
         self.y = dy * xp.arange(ny) + y0 + dy / 2
         self.d = dx
 
-        # Vectors containing the coordinates of the interior 
+        # Vectors containing the coordinates of the interior
         # u and v velocity nodes
         self.xu = (self.x[1:] + self.x[:-1]) / 2
         self.yu = self.y.copy()
         self.xv = self.x.copy()
         self.yv = (self.y[1:] + self.y[:-1]) / 2
-        
+
         # Pressure field
         self.p = xp.zeros((len(self.y), len(self.x)))
         # Streamwise velocity field (including and excluding boundaries)

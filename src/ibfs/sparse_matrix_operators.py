@@ -87,6 +87,7 @@ def divergence_sparsity_pattern(mesh: "Mesh"):
     :rtype: Tuple[xp.array, xp.array, xp.array, xp.array]
     """
     svec = xp.asarray([-1, 0, 1])
+    svec_p = xp.array([-1, 0, 1, 2])
     s = len(svec)
 
     nyu, nxu = mesh.u_int.shape
@@ -109,7 +110,7 @@ def divergence_sparsity_pattern(mesh: "Mesh"):
         cols_mat_query.append(cols_mat_k)
         rows_mat_extract_k = []
         for l, c in enumerate(cols_mat_k):
-            vec_jl = j[l] + svec
+            vec_jl = j[l] + svec_p
             vec_jl = vec_jl[(vec_jl > -1) & (vec_jl < nxp)]
             rows_mat_l = i[l] * nxp + vec_jl
             rows_mat.extend(rows_mat_l)
@@ -130,7 +131,7 @@ def divergence_sparsity_pattern(mesh: "Mesh"):
         cols_mat_query.append(cols_mat_k)
         rows_mat_extract_k = []
         for l, c in enumerate(cols_mat_k):
-            vec_il = i[l] + svec
+            vec_il = i[l] + svec_p
             vec_il = vec_il[(vec_il > -1) & (vec_il < nyp)]
             rows_mat_l = vec_il * nxp + j[l]
             rows_mat.extend(rows_mat_l)

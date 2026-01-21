@@ -5,6 +5,7 @@ from typing import Tuple, Optional, TYPE_CHECKING
 if TYPE_CHECKING:
     from .mesh import Mesh
     from .boundary_conditions import BoundaryConditions
+    from .immersed_body import ImmersedBody
 
 from .helpers import (
     interpolate_1d,
@@ -120,7 +121,7 @@ class SpatialOperators:
             + u_interp_y[1:, 1:-1] * v_interp_x[1:, 1:-1]
             - u_interp_y[:-1, 1:-1] * v_interp_x[:-1, 1:-1]
         ) * d
-    
+
     def evaluate_wallnormal_advection(
         self, u: xp.array, v: xp.array, d: float
     ) -> xp.array:

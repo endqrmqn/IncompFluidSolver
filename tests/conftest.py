@@ -4,9 +4,11 @@ def try_import(name):
     except ImportError:
         return None
 
+
 import pytest
 import numpy as np
 import axisymflow as axf
+
 
 @pytest.fixture(scope="session")
 def library(device_and_order):
@@ -28,4 +30,3 @@ def grid_sizes():
     nys = np.asarray([100, 200, 400, 800, 1000, 1600, 3200])
     nxs = 2 * nys
     return (nxs, nys)
-
