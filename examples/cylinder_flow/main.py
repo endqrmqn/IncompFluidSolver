@@ -10,9 +10,9 @@ def make_circle(D, d):
 
 Re = 100
 
-x0, x1 = -3, 17
-y0, y1 = -5, 5
-nx, ny = 1000, 500
+x0, x1 = -3, 15
+y0, y1 = -4.5, 4.5
+nx, ny = 500, 250
 
 mesh = ibfs.Mesh(x0, x1, nx, y0, y1, ny)
 
@@ -97,7 +97,7 @@ tstep = ibfs.TimeStepper(dt, spops, ib, scheme="RK2")
 # %%
 q0 = xp.ones(xp.prod(mesh.u_int.shape) + xp.prod(mesh.v_int.shape))
 q0[xp.prod(mesh.u_int.shape) :] = 0.0
-Q, tsave = tstep.solve(0.0, 1000 * dt, 10, Q[:, -1])
+Q, tsave = tstep.solve(0.0, 1000 * dt, 10, q0)
 
 # %%
 ibfs.vector_to_fields(0.0, Q[:, -1], mesh, bcs)
