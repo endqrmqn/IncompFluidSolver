@@ -1,19 +1,18 @@
 import numpy as xp
 import ibfs
 import os
-import matplotlib.pyplot as plt
 
 Re = 1000
 
 # Define the spatial domain (a box of size 1 x 1)
-# discretized with 150 cells in the x and y directions
+# discretized with 200 cells in the x and y directions
 x0, x1 = -0.5, 0.5
 y0, y1 = -0.5, 0.5
 nx, ny = 200, 200
 mesh = ibfs.Mesh(x0, x1, nx, y0, y1, ny)
 
 # Define the boundary conditions. Zero velocity boundary conditions
-# on all sides, except the u = 1 at the bottom wall 
+# on all sides, except the u = 1 at the top wall 
 
 # U velocity boundary conditons
 zeros_lr_u = xp.zeros(mesh.u_int.shape[0])

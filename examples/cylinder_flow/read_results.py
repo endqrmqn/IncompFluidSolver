@@ -1,6 +1,6 @@
 import numpy as xp
 import ibfs
-import os
+import matplotlib.pyplot as plt
 
 
 def make_circle(D, d):
@@ -65,37 +65,25 @@ spops = ibfs.SpatialOperators(Re, mesh, bcs, False)
 ib = ibfs.ImmersedBody(*make_circle(1.0, mesh.d), spops)
 
 
-# Instantiate the TimeStepper class to evolve the system
-# We integrate with a fixed delta t = 1e-2
-dt = 1e-2
-tstep = ibfs.TimeStepper(dt, spops, ib, scheme="RK2")
-
-# Run the time stepper from t = 0 to t = 100 with 
-# initial condition q0 = 0
-q0 = xp.ones(xp.prod(mesh.u_int.shape) + xp.prod(mesh.v_int.shape))
-q0[xp.prod(mesh.u_int.shape) :] = 0.0
-Q, tsave = tstep.solve(0.0, 1000 * dt, 10, q0)
-
 save_path = 'data/'
-os.makedirs(save_path, exist_ok=True)
-xp.save(save_path + 'snapshot.npy', Q[:, -1])
+q = xp.load(save_path + 'snapshot.npy')
 
-# %%
+ibfs.vector_to_fields(0.0, q, mesh, bcs)
+Xu, Yu, Xv, Yv, _, _ = mesh.generate_meshgrids(False)
 
-# import matplotlib.pyplot as plt
-# ibfs.vector_to_fields(0.0, Q[:, -1], mesh, bcs)
-# Xu, Yu, Xv, Yv, _, _ = mesh.generate_meshgrids(False)
+fig, ax = plt.subplots(nrows=1, ncols=2)
+ax[0].contourf(Xu, Yu, mesh.u_ext, cmap="bwr", levels=200)
+ax[0].fill(ib.xi, ib.eta, color="k")
+ax[0].set_aspect("equal")
+ax[0].set_xlabel(r'$x/L$')
+ax[0].set_ylabel(r'$y/L$')
+ax[0].set_title(r'$u$ velocity')
 
-# plt.figure()
-# plt.contourf(Xu, Yu, mesh.u_ext, cmap="bwr", levels=200)
-# plt.fill(ib.xi, ib.eta, color="k")
-# ax = plt.gca()
-# ax.set_aspect("equal")
-# plt.colorbar()
+ax[1].contourf(Xv, Yv, mesh.v_ext, cmap="bwr", levels=200)
+ax[1].fill(ib.xi, ib.eta, color="k")
+ax[1].set_aspect("equal")
+ax[1].set_xlabel(r'$x/L$')
+ax[1].set_yticks([])
+ax[1].set_title(r'$v$ velocity')
 
-# plt.figure()
-# plt.contourf(Xv, Yv, mesh.v_ext, cmap="bwr", levels=200)
-# plt.fill(ib.xi, ib.eta, color="k")
-# ax = plt.gca()
-# ax.set_aspect("equal")
-# plt.colorbar()
+plt.show()
