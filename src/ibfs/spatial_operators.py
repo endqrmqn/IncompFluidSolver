@@ -153,8 +153,16 @@ class SpatialOperators:
             + mesh.fy_int
         )
         return (mom_x, mom_y)
+    
+    def evaluate_pressure_gradient(self, mesh):
+        return tuple(
+            [
+                evaluate_derivative_staggered(mesh.p, mesh.d, ax)
+                for ax in [1, 0]
+            ]
+        )
 
-    def evaluate_pressure_gradient(self, p: xp.array, d: float) -> Tuple[xp.array, xp.array]: #type: ignore
+    def updated_evaluate_pressure_gradient(self, p: xp.array, d: float) -> Tuple[xp.array, xp.array]: #type: ignore
         #eval at cell faces corresponding to correct momentum eqn
         #dp/dx at u locations
         #dp/dy at v locations
@@ -174,8 +182,22 @@ class SpatialOperators:
         axes = xp.flipud(xp.arange(mesh.p.ndim, dtype=xp.int32))
         div = xp.zeros_like(mesh.p)
         for i, f in enumerate(fields):
-            slc = [slice(1, -1) if j != axes[i] else slice(None) for j in axes]
+            slc = [slice(None) if j != axes[i] else slice(1, -1) for j in axes]
             div += evaluate_derivative_staggered(f, mesh.d, axis=axes[i])[
                 tuple(slc)
             ]
         return div
+    
+    
+    def updated_evaluate_divergence(self, mesh, u: xp.array, v: xp.array) -> xp.array: #type: ignore
+        #eval at cell center
+        fields = [mesh.u_ext, mesh.v_ext]
+        axes = xp.flipud(xp.arange(mesh.p.ndim, dtype=xp.int32))
+        div = xp.zeros_like(mesh.p)
+        for i, f in enumerate(fields):
+            slc = [slice(None) if j != axes[i] else slice(1, -1) for j in axes]
+            div += evaluate_derivative_staggered(f, mesh.d, axis=axes[i])[
+                tuple(slc)
+            ]
+        return div
+    
