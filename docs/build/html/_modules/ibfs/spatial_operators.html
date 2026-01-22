@@ -41,6 +41,7 @@
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../mathematical_details.html">Code Description</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../api-reference.html">API-reference</a></li>
 </ul>
 
@@ -76,6 +77,7 @@
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">.mesh</span><span class="w"> </span><span class="kn">import</span> <span class="n">Mesh</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">.boundary_conditions</span><span class="w"> </span><span class="kn">import</span> <span class="n">BoundaryConditions</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.immersed_body</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImmersedBody</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">.helpers</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">interpolate_1d</span><span class="p">,</span>
@@ -199,7 +201,7 @@
             <span class="o">-</span> <span class="n">u_interp_y</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">v_interp_x</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
         <span class="p">)</span> <span class="o">*</span> <span class="n">d</span></div>
 
-    
+
 <div class="viewcode-block" id="SpatialOperators.evaluate_wallnormal_advection">
 <a class="viewcode-back" href="../../spatial_operators.html#ibfs.spatial_operators.SpatialOperators.evaluate_wallnormal_advection">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">evaluate_wallnormal_advection</span><span class="p">(</span>
@@ -207,7 +209,7 @@
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xp</span><span class="o">.</span><span class="n">array</span><span class="p">:</span>
 <span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Compute</span>
-
+<span class="sd">        </span>
 <span class="sd">        .. math::</span>
 
 <span class="sd">            \int_{X} v^2(x,y)\big\lvert_{y=y_{b}}^{y=y_t}\,dx +</span>

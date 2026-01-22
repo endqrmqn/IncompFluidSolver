@@ -127,7 +127,7 @@ class SpatialOperators:
     ) -> xp.array:
         r"""
         Compute
-
+        
         .. math::
 
             \int_{X} v^2(x,y)\big\lvert_{y=y_{b}}^{y=y_t}\,dx +

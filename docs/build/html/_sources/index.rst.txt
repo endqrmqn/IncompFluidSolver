@@ -3,13 +3,15 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Immersed Boundary Flow Solver documentation
-===========================================
+Incompressible Flow Solver documentation
+========================================
 
 
 .. toctree::
    :maxdepth: 1
    :caption: Getting Started
 
+   mathematical_details.rst
    api-reference.rst
+   
    

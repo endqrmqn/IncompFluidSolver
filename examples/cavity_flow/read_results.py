@@ -52,21 +52,44 @@ bcvvel = ibfs.BoundaryConditions(
 bcs = [bcuvel, bcvvel]
 
 
-# Instantiate the SpatialOperator class to evaluate the
-# right-hand side of the Navier-Stokes equation
-spops = ibfs.SpatialOperators(Re, mesh, bcs)
-
-
-# Instantiate the TimeStepper class to evolve the system
-# We integrate with a fixed delta t = 5e-3
-dt = 5e-3
-tstep = ibfs.TimeStepper(dt, spops, None, scheme="RK2")
-
-# Run the time stepper from t = 0 to t = 100 with 
-# initial condition q0 = 0
-q0 = xp.zeros(xp.prod(mesh.u_int.shape) + xp.prod(mesh.v_int.shape))
-Q, tsave = tstep.solve(0.0, 100, 10, q0)
-
+# Plot
 save_path = 'data/'
-os.makedirs(save_path, exist_ok=True)
-xp.save(save_path + 'snapshot.npy', Q[:, -1])
+q = xp.load(save_path + 'snapshot.npy')
+
+ibfs.vector_to_fields(0.0, q, mesh, bcs)
+Xu, Yu, Xv, Yv, _, _ = mesh.generate_meshgrids(False)
+
+
+fig, ax = plt.subplots(nrows=1, ncols=2)
+ax[0].contourf(Xu, Yu, mesh.u_ext, cmap="inferno", levels=200)
+ax[0].set_aspect("equal")
+ax[0].set_xlabel(r'x/L')
+ax[0].set_ylabel(r'y/L')
+ax[0].set_title(r'$u$ velocity')
+
+ax[1].contourf(Xv, Yv, mesh.v_ext, cmap="bwr", levels=200)
+ax[1].set_aspect("equal")
+ax[1].set_xlabel(r'x/L')
+ax[1].set_yticks([])
+ax[1].set_title(r'$v$ velocity')
+
+plt.show()
+
+idx = xp.argmin(xp.abs(Xu[0,]))
+uvel = mesh.u_ext[:, idx]
+
+data_ghia = xp.loadtxt("ghia_data.txt")[:, 1:]
+Re_ghia = xp.loadtxt("ghia_Re.txt")
+idx = xp.argmin(xp.abs(Re_ghia - Re))
+uvel_ghia = data_ghia[:, idx + 1]
+
+plt.figure()
+plt.plot(uvel[1:-1], Yu[1:-1, 0] + y1, "k", label="Present")
+plt.plot(uvel_ghia, data_ghia[:, 0], "ro", label="Ghia et al., (1982)")
+ax = plt.gca()
+ax.set_xlabel(r"$u / u_{\infty}$ velocity")
+ax.set_ylabel(r"$y / L$")
+ax.set_aspect("equal")
+plt.legend()
+plt.show()
+

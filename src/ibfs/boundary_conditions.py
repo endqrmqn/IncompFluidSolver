@@ -100,7 +100,7 @@ class BoundaryConditions:
         r"""
         Impose boundary conditions on the velocity field. This function modifies
         the input :code:`field` in place. This field is usually :code:`mesh.u_ext` or
-        :code:`mesh.v_ext`, with :code:`mesh` and instance of the :class:`Mesh` class.
+        :code:`mesh.v_ext`, with :code:`mesh` an instance of the :class:`Mesh` class.
 
         :param field: 2D array contaning either the streamwise or wall-normal velocity field
             (Usually :code:`mesh.u_ext` or :code:`mesh.v_ext`, as indicated previously.)
