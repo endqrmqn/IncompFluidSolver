@@ -172,3 +172,8 @@ class BoundaryConditions:
                         field[-1, 1:-1] = (
                             4 * field[-2, 1:-1] - field[-3, 1:-1]
                         ) / 3
+
+            # Handle corners (these values are set only for plotting reasons). They
+            # are never actually accessed by the solver.
+            field[[0, -1], -1] = field[[0, -1], -2] # Corners at right wall
+            field[[0, -1], 0] = field[[0, -1], 1]   # Corners at left wall
