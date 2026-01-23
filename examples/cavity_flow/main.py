@@ -12,7 +12,7 @@ nx, ny = 200, 200
 mesh = ibfs.Mesh(x0, x1, nx, y0, y1, ny)
 
 # Define the boundary conditions. Zero velocity boundary conditions
-# on all sides, except the u = 1 at the top wall 
+# on all sides, except the u = 1 at the top wall
 
 # U velocity boundary conditons
 zeros_lr_u = xp.zeros(mesh.u_int.shape[0])
@@ -61,11 +61,11 @@ spops = ibfs.SpatialOperators(Re, mesh, bcs)
 dt = 5e-3
 tstep = ibfs.TimeStepper(dt, spops, None, scheme="RK2")
 
-# Run the time stepper from t = 0 to t = 100 with 
+# Run the time stepper from t = 0 to t = 100 with
 # initial condition q0 = 0
 q0 = xp.zeros(xp.prod(mesh.u_int.shape) + xp.prod(mesh.v_int.shape))
 Q, tsave = tstep.solve(0.0, 100, 10, q0)
 
-save_path = 'data/'
+save_path = "data/"
 os.makedirs(save_path, exist_ok=True)
-xp.save(save_path + 'snapshot.npy', Q[:, -1])
+xp.save(save_path + "snapshot.npy", Q[:, -1])

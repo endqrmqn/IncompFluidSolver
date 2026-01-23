@@ -1,9 +1,4 @@
 import numpy as xp
-from .helpers import (
-    interpolate_1d,
-    evaluate_derivative,
-    evaluate_derivative_staggered,
-)
 from typing import Optional, Callable, TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -175,5 +170,5 @@ class BoundaryConditions:
 
             # Handle corners (these values are set only for plotting reasons). They
             # are never actually accessed by the solver.
-            field[[0, -1], -1] = field[[0, -1], -2] # Corners at right wall
-            field[[0, -1], 0] = field[[0, -1], 1]   # Corners at left wall
+            field[[0, -1], -1] = field[[0, -1], -2]  # Corners at right wall
+            field[[0, -1], 0] = field[[0, -1], 1]  # Corners at left wall

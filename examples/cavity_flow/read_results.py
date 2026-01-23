@@ -13,7 +13,7 @@ nx, ny = 200, 200
 mesh = ibfs.Mesh(x0, x1, nx, y0, y1, ny)
 
 # Define the boundary conditions. Zero velocity boundary conditions
-# on all sides, except the u = 1 at the bottom wall 
+# on all sides, except the u = 1 at the bottom wall
 
 # U velocity boundary conditons
 zeros_lr_u = xp.zeros(mesh.u_int.shape[0])
@@ -53,8 +53,8 @@ bcs = [bcuvel, bcvvel]
 
 
 # Plot
-save_path = 'data/'
-q = xp.load(save_path + 'snapshot.npy')
+save_path = "data/"
+q = xp.load(save_path + "snapshot.npy")
 
 ibfs.vector_to_fields(0.0, q, mesh, bcs)
 Xu, Yu, Xv, Yv, _, _ = mesh.generate_meshgrids(False)
@@ -63,15 +63,15 @@ Xu, Yu, Xv, Yv, _, _ = mesh.generate_meshgrids(False)
 fig, ax = plt.subplots(nrows=1, ncols=2)
 ax[0].contourf(Xu, Yu, mesh.u_ext, cmap="inferno", levels=200)
 ax[0].set_aspect("equal")
-ax[0].set_xlabel(r'$x/L$')
-ax[0].set_ylabel(r'$y/L$')
-ax[0].set_title(r'$u$ velocity')
+ax[0].set_xlabel(r"$x/L$")
+ax[0].set_ylabel(r"$y/L$")
+ax[0].set_title(r"$u$ velocity")
 
 ax[1].contourf(Xv, Yv, mesh.v_ext, cmap="bwr", levels=200)
 ax[1].set_aspect("equal")
-ax[1].set_xlabel(r'$x/L$')
+ax[1].set_xlabel(r"$x/L$")
 ax[1].set_yticks([])
-ax[1].set_title(r'$v$ velocity')
+ax[1].set_title(r"$v$ velocity")
 
 plt.show()
 
@@ -92,4 +92,3 @@ ax.set_ylabel(r"$y / L$")
 ax.set_aspect("equal")
 plt.legend()
 plt.show()
-

@@ -16,7 +16,7 @@ def test_momentum_linearization(domain_and_Reynolds):
     mesh = ibfs.Mesh(x0, x1, nx, y0, y1, ny)
     bcs = pyut.instantiate_boundary_conditions(mesh)
     nsop = ibfs.SpatialOperators(Re, mesh, bcs, False)
-    
+
     eps = 1e-1
     szflow = xp.prod(mesh.u_int.shape) + xp.prod(mesh.v_int.shape)
     Qbflow = xp.random.randn(szflow)

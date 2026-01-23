@@ -1,9 +1,6 @@
 import numpy as xp
 import scipy.sparse as sps
-from .helpers import (
-    interpolate_1d,
-    evaluate_derivative,
-    evaluate_derivative_staggered,
+from ..utils.helpers import (
     vector_to_fields,
 )
 from typing import Optional, Callable, TYPE_CHECKING

@@ -4,18 +4,18 @@ import os
 
 
 def make_circle(D, d):
-    th = xp.arange(0, 2 * xp.pi, 2 * xp.pi / (2 * xp.pi // d))
+    th = xp.arange(0, 2 * xp.pi, 2 * xp.pi / (2 * xp.pi // (2 * d)))
     return 0.5 * D * xp.cos(th), 0.5 * D * xp.sin(th)
 
 
-Re = 100
+Re = 40
 
 # Define the spatial domain
 # discretized with 500 cells in the x direction and
 # 250 in the y direction
-x0, x1 = -3, 15
-y0, y1 = -4.5, 4.5
-nx, ny = 500, 250
+x0, x1 = -10, 30
+y0, y1 = -10, 10
+nx, ny = 1000, 500
 mesh = ibfs.Mesh(x0, x1, nx, y0, y1, ny)
 
 
@@ -30,12 +30,12 @@ bcuvel = ibfs.BoundaryConditions(
     "u",
     "dirichlet",
     "neumann",
-    "neumann",
-    "neumann",
+    "dirichlet",
+    "dirichlet",
     lambda t: ones_l_u,
     None,
-    None,
-    None,
+    lambda t: ones_b_u,
+    lambda t: ones_b_u,
 )
 
 # V velocity boundary conditions
@@ -45,12 +45,12 @@ bcvvel = ibfs.BoundaryConditions(
     "v",
     "dirichlet",
     "neumann",
-    "neumann",
-    "neumann",
+    "dirichlet",
+    "dirichlet",
     lambda t: zeros_l_v,
     None,
-    None,
-    None,
+    lambda t: zeros_b_v,
+    lambda t: zeros_b_v,
 )
 bcs = [bcuvel, bcvvel]
 
@@ -70,32 +70,12 @@ ib = ibfs.ImmersedBody(*make_circle(1.0, mesh.d), spops)
 dt = 1e-2
 tstep = ibfs.TimeStepper(dt, spops, ib, scheme="RK2")
 
-# Run the time stepper from t = 0 to t = 100 with 
+# Run the time stepper from t = 0 to t = 100 with
 # initial condition q0 = 0
 q0 = xp.ones(xp.prod(mesh.u_int.shape) + xp.prod(mesh.v_int.shape))
 q0[xp.prod(mesh.u_int.shape) :] = 0.0
-Q, tsave = tstep.solve(0.0, 1000 * dt, 10, q0)
+Q, tsave = tstep.solve(0.0, 10000 * dt, 100, q0)
 
-save_path = 'data/'
+save_path = "data/"
 os.makedirs(save_path, exist_ok=True)
-xp.save(save_path + 'snapshot.npy', Q[:, -1])
-
-# %%
-
-# import matplotlib.pyplot as plt
-# ibfs.vector_to_fields(0.0, Q[:, -1], mesh, bcs)
-# Xu, Yu, Xv, Yv, _, _ = mesh.generate_meshgrids(False)
-
-# plt.figure()
-# plt.contourf(Xu, Yu, mesh.u_ext, cmap="bwr", levels=200)
-# plt.fill(ib.xi, ib.eta, color="k")
-# ax = plt.gca()
-# ax.set_aspect("equal")
-# plt.colorbar()
-
-# plt.figure()
-# plt.contourf(Xv, Yv, mesh.v_ext, cmap="bwr", levels=200)
-# plt.fill(ib.xi, ib.eta, color="k")
-# ax = plt.gca()
-# ax.set_aspect("equal")
-# plt.colorbar()
+xp.save(save_path + "snapshot.npy", Q[:, -1])

@@ -4,16 +4,11 @@ import tqdm
 from typing import Tuple, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .mesh import Mesh
-    from .spatial_operators import SpatialOperators
-    from .immersed_body import ImmersedBody
+    from ..spatial_discretization.mesh import Mesh
+    from ..spatial_discretization.spatial_operators import SpatialOperators
+    from ..spatial_discretization.immersed_body import ImmersedBody
 
-from .helpers import (
-    interpolate_1d,
-    evaluate_derivative,
-    evaluate_derivative_staggered,
-)
-from .sparse_matrix_operators import (
+from ..spatial_discretization.sparse_matrix_operators import (
     divergence_sparsity_pattern,
     gradient_sparsity_pattern,
     divergence_data,

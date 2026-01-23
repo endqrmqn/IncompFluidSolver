@@ -13,9 +13,9 @@ Re = 100
 # Define the spatial domain
 # discretized with 500 cells in the x direction and
 # 250 in the y direction
-x0, x1 = -3, 15
-y0, y1 = -4.5, 4.5
-nx, ny = 500, 250
+x0, x1 = -10, 30
+y0, y1 = -10, 10
+nx, ny = 1000, 500
 mesh = ibfs.Mesh(x0, x1, nx, y0, y1, ny)
 
 
@@ -65,25 +65,58 @@ spops = ibfs.SpatialOperators(Re, mesh, bcs, False)
 ib = ibfs.ImmersedBody(*make_circle(1.0, mesh.d), spops)
 
 
-save_path = 'data/'
-q = xp.load(save_path + 'snapshot.npy')
+save_path = "data/"
+q = xp.load(save_path + "snapshot.npy")
 
-ibfs.vector_to_fields(0.0, q, mesh, bcs)
-Xu, Yu, Xv, Yv, _, _ = mesh.generate_meshgrids(False)
+U, V, X, Y = ibfs.interpolate_to_nodes(0.0, q, mesh, bcs)
 
-fig, ax = plt.subplots(nrows=1, ncols=2)
-ax[0].contourf(Xu, Yu, mesh.u_ext, cmap="bwr", levels=200)
-ax[0].fill(ib.xi, ib.eta, color="k")
-ax[0].set_aspect("equal")
-ax[0].set_xlabel(r'$x/L$')
-ax[0].set_ylabel(r'$y/L$')
-ax[0].set_title(r'$u$ velocity')
+spx = xp.arange(0.5, 3, 3.5 / 10)
+spy = xp.arange(-1.5, 1.5, 3 / 10)
+spx, spy = xp.meshgrid(spx, spy)
+spx = spx.reshape(-1).reshape(1, -1)
+spy = spy.reshape(-1).reshape(1, -1)
 
-ax[1].contourf(Xv, Yv, mesh.v_ext, cmap="bwr", levels=200)
-ax[1].fill(ib.xi, ib.eta, color="k")
-ax[1].set_aspect("equal")
-ax[1].set_xlabel(r'$x/L$')
-ax[1].set_yticks([])
-ax[1].set_title(r'$v$ velocity')
+start_points = xp.concatenate((spx, spy), axis=0)
+plt.figure()
+plt.streamplot(
+    X[210:-210, 40:-600],
+    Y[210:-210, 40:-600],
+    U[210:-210, 40:-600],
+    V[210:-210, 40:-600],
+    start_points=start_points.T,
+    maxlength=2000,
+    density=9,
+    minlength=0.0,
+    integration_direction="both",
+)
+plt.plot(1.26, 0.3, "ro", linewidth=3.0)
+plt.plot(2.83, 0.0, "ro", linewidth=3.0)
+plt.fill(ib.xi, ib.eta, color="k")
+ax = plt.gca()
+ax.set_ylim([-2, 2])
+ax.set_xlim([-2, 4])
+ax.set_aspect("equal")
+ax.set_xlabel(r"$x/D$")
+ax.set_ylabel(r"$y/D$")
+ax.text(0.5, 1.7, r"$a/D \approx 0.76$, $b/D \approx 0.6$, $l/D\approx 2.33$")
+ax.text(0.5, 1.45, r"See Fig. 6 in Taira and Colonius, JCP, (2007)")
+ax.set_title(r"Steady-state streamlines at $Re = 40$")
+plt.tight_layout()
+plt.show()
 
+
+omega, _, _ = ibfs.compute_vorticity(0.0, q, mesh, bcs)
+
+plt.figure()
+plt.contour(X, Y, omega, cmap="bwr", levels=xp.arange(-3, 3 + 0.4, 0.4))
+plt.fill(ib.xi, ib.eta, color="k")
+ax = plt.gca()
+ax.set_ylim([-2.5, 2.5])
+ax.set_xlim([-2, 4])
+ax.set_xlabel(r"$x/D$")
+ax.set_ylabel(r"$y/D$")
+ax.set_title(r'Steady-state vorticity contours at $Re = 40$')
+ax.set_aspect("equal")
+plt.colorbar()
+plt.tight_layout()
 plt.show()

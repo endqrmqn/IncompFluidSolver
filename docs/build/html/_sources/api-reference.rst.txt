@@ -5,9 +5,5 @@ API-reference
    :maxdepth: 2
    :caption: Modules
 
-   mesh.rst
-   boundary_conditions.rst
-   spatial_operators.rst
-   sparse_matrix_operators.rst
-   immersed_body.rst
-   time_stepper.rst
+   spatial_discretization.rst
+   temporal_discretization.rst

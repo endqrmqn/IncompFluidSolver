@@ -7,7 +7,7 @@ if TYPE_CHECKING:
     from .mesh import Mesh
     from .spatial_operators import SpatialOperators
 
-from .helpers import (
+from ..utils.helpers import (
     vector_to_fields,
     zero_out_fields,
 )
