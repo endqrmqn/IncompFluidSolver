@@ -90,24 +90,24 @@ class TimeStepper:
         tsave = timevec[::mjump]
         q = q0.copy()
         Q = xp.zeros((len(q), len(tsave)))
+        q[:] = self.enforce_constraints(timevec[0], q)
         Q[:, 0] = q
         if self.scheme == "RK2":
             qs1 = xp.zeros_like(q)
+            rhs = xp.zeros_like(q)
             k = 0
             iterable = range(1, len(timevec))
             iterable = tqdm.tqdm(iterable) if verbose else iterable
             for i in iterable:
                 # First stage
                 t = timevec[i - 1]
-                qs1[:] = q + (
-                    self.dt / 2
-                ) * self.spatial_operators.evaluate_right_hand_side(t, q)
+                rhs[:] = self.spatial_operators.evaluate_right_hand_side(t, q)
+                qs1[:] = q + self.dt / 2 * rhs
                 qs1[:] = self.enforce_constraints(t, qs1)
                 # Second stage
                 t = (timevec[i - 1] + timevec[i]) / 2
-                q += self.dt * self.spatial_operators.evaluate_right_hand_side(
-                    t, qs1
-                )
+                rhs[:] = self.spatial_operators.evaluate_right_hand_side(t, qs1)
+                q += self.dt * rhs
                 q[:] = self.enforce_constraints(t, q)
 
                 # Save data

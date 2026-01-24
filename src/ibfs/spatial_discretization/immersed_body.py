@@ -3,7 +3,7 @@ import scipy.sparse as sps
 from ..utils.helpers import (
     vector_to_fields,
 )
-from typing import Optional, Callable, TYPE_CHECKING
+from typing import Tuple, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .mesh import Mesh
@@ -31,12 +31,13 @@ class ImmersedBody:
         self.xi = xi
         self.eta = eta
         self.vel_ib = xp.zeros(2 * len(self.xi))
+        self.ftil = xp.zeros_like(self.vel_ib)
         self.spatial_operators = spatial_operators
 
         dxis = xp.roll(self.xi, -1) - self.xi
         detas = xp.roll(self.eta, -1) - self.eta
         dsvec = xp.sqrt(dxis**2 + detas**2)
-        self.Sinv = xp.concatenate((1 / dsvec, 1 / dsvec))
+        self.S = xp.concatenate((dsvec, dsvec))
 
         self.assemble_interpolation_matrix()
         self.assemble_constraint_matrices()
@@ -68,7 +69,7 @@ class ImmersedBody:
 
         .. math::
 
-            E_{i,k} = \Delta^2 d(x_i - \xi_k)d(y_i - \eta_k).
+            E_{k,i} = \Delta^2 d(x_i - \xi_k)d(y_i - \eta_k).
 
         The sparse matrix :math:`E` is stored as attribute :code:`self.E`.
         """
@@ -157,11 +158,44 @@ class ImmersedBody:
                 self.vel_ib,
             )
         )
-        return q - self.Q.dot(
-            self.LuRQa.solve(xp.concatenate((self.R.dot(q) - rhsvec, [0])))[
-                :-1
-            ]
-        )
+        vec = self.LuRQa.solve(xp.concatenate((self.R.dot(q) - rhsvec, [0])))[
+            :-1
+        ]
+        self.ftil = vec[xp.prod(spops.mesh.p.shape):]
+        return q - self.Q.dot(vec)
 
-    def recover_forces(self, f):
-        return -(self.spatial_operators.mesh.d**4) * self.Sinv * f
+    def recover_physical_forces(self, dt) -> xp.array:
+        r"""
+        Given the transformed forces :math:`\tilde{f}_j` computed by
+        the code, the physical forces are recovered by the formula
+
+        .. math::
+
+            f_j = -\frac{\Delta^2}{\Delta t \Delta s_j}\tilde{f}_j,
+
+        where :math:`\Delta` is the (uniform) grid spacing in the cartesian
+        grid, :math:`\Delta s_j` is the grid spacing between the :math:`j`th
+        and :math:`(j+1)`th Lagrangian points, and :math:`\Delta t` is the
+        time step.
+
+        :rtype: xp.array
+        """
+        return -self.spatial_operators.mesh.d**2 * self.ftil / self.S / dt
+    
+    def compute_total_force_on_the_body(self, dt) -> Tuple[xp.array, xp.array]:
+        r"""
+        The total force exerted by the fluid on the body is given by
+
+        .. math::
+
+            \mathbf{F} = -\left(F_x, F_y\right) = \int_{\mathcal{S}}\mathbf{f}(\pmb{\xi}(s))\,ds.
+        
+        (Notice the minus sign, since :math:`\mathbf{f}`, recovered through
+        :func:`recover_physical_forces`, is the force exerted by the body
+        on the fluid.)
+        
+        :rtype: Tuple[xp.array, xp.array]
+        """
+        F = -self.recover_physical_forces(dt) * self.S
+        Fx, Fy = xp.sum(F[:len(self.xi)]), xp.sum(F[len(self.xi):])
+        return Fx, Fy

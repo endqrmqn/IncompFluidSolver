@@ -14,8 +14,8 @@ Re = 40
 # discretized with 500 cells in the x direction and
 # 250 in the y direction
 x0, x1 = -10, 30
-y0, y1 = -10, 10
-nx, ny = 1000, 500
+y0, y1 = -15, 15
+nx, ny = 1000, 750
 mesh = ibfs.Mesh(x0, x1, nx, y0, y1, ny)
 
 
@@ -30,8 +30,8 @@ bcuvel = ibfs.BoundaryConditions(
     "u",
     "dirichlet",
     "neumann",
-    "dirichlet",
-    "dirichlet",
+    "neumann",
+    "neumann",
     lambda t: ones_l_u,
     None,
     lambda t: ones_b_u,
@@ -58,12 +58,10 @@ bcs = [bcuvel, bcvvel]
 # right-hand side of the Navier-Stokes equation
 spops = ibfs.SpatialOperators(Re, mesh, bcs, False)
 
-
 # Instantiate the ImmersedBody class to account for the
 # presence of a cylinder with diameter = 1 and center
 # at (0, 0)
 ib = ibfs.ImmersedBody(*make_circle(1.0, mesh.d), spops)
-
 
 # Instantiate the TimeStepper class to evolve the system
 # We integrate with a fixed delta t = 1e-2
@@ -74,8 +72,12 @@ tstep = ibfs.TimeStepper(dt, spops, ib, scheme="RK2")
 # initial condition q0 = 0
 q0 = xp.ones(xp.prod(mesh.u_int.shape) + xp.prod(mesh.v_int.shape))
 q0[xp.prod(mesh.u_int.shape) :] = 0.0
-Q, tsave = tstep.solve(0.0, 10000 * dt, 100, q0)
+Q, tsave = tstep.solve(0.0, 5000 * dt, 100, q0)
 
 save_path = "data/"
 os.makedirs(save_path, exist_ok=True)
 xp.save(save_path + "snapshot.npy", Q[:, -1])
+
+
+
+

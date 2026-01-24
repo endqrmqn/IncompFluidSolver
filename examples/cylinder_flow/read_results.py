@@ -4,18 +4,18 @@ import matplotlib.pyplot as plt
 
 
 def make_circle(D, d):
-    th = xp.arange(0, 2 * xp.pi, 2 * xp.pi / (2 * xp.pi // d))
+    th = xp.arange(0, 2 * xp.pi, 2 * xp.pi / (2 * xp.pi // (2 * d)))
     return 0.5 * D * xp.cos(th), 0.5 * D * xp.sin(th)
 
 
-Re = 100
+Re = 40
 
 # Define the spatial domain
 # discretized with 500 cells in the x direction and
 # 250 in the y direction
 x0, x1 = -10, 30
-y0, y1 = -10, 10
-nx, ny = 1000, 500
+y0, y1 = -15, 15
+nx, ny = 1000, 750
 mesh = ibfs.Mesh(x0, x1, nx, y0, y1, ny)
 
 
@@ -34,8 +34,8 @@ bcuvel = ibfs.BoundaryConditions(
     "neumann",
     lambda t: ones_l_u,
     None,
-    None,
-    None,
+    lambda t: ones_b_u,
+    lambda t: ones_b_u,
 )
 
 # V velocity boundary conditions
@@ -45,12 +45,12 @@ bcvvel = ibfs.BoundaryConditions(
     "v",
     "dirichlet",
     "neumann",
-    "neumann",
-    "neumann",
+    "dirichlet",
+    "dirichlet",
     lambda t: zeros_l_v,
     None,
-    None,
-    None,
+    lambda t: zeros_b_v,
+    lambda t: zeros_b_v,
 )
 bcs = [bcuvel, bcvvel]
 
@@ -58,15 +58,14 @@ bcs = [bcuvel, bcvvel]
 # right-hand side of the Navier-Stokes equation
 spops = ibfs.SpatialOperators(Re, mesh, bcs, False)
 
-
 # Instantiate the ImmersedBody class to account for the
 # presence of a cylinder with diameter = 1 and center
 # at (0, 0)
 ib = ibfs.ImmersedBody(*make_circle(1.0, mesh.d), spops)
 
-
 save_path = "data/"
 q = xp.load(save_path + "snapshot.npy")
+
 
 U, V, X, Y = ibfs.interpolate_to_nodes(0.0, q, mesh, bcs)
 
@@ -79,10 +78,10 @@ spy = spy.reshape(-1).reshape(1, -1)
 start_points = xp.concatenate((spx, spy), axis=0)
 plt.figure()
 plt.streamplot(
-    X[210:-210, 40:-600],
-    Y[210:-210, 40:-600],
-    U[210:-210, 40:-600],
-    V[210:-210, 40:-600],
+    X[310:-310, 40:-600],
+    Y[310:-310, 40:-600],
+    U[310:-310, 40:-600],
+    V[310:-310, 40:-600],
     start_points=start_points.T,
     maxlength=2000,
     density=9,
@@ -115,7 +114,7 @@ ax.set_ylim([-2.5, 2.5])
 ax.set_xlim([-2, 4])
 ax.set_xlabel(r"$x/D$")
 ax.set_ylabel(r"$y/D$")
-ax.set_title(r'Steady-state vorticity contours at $Re = 40$')
+ax.set_title(r"Steady-state vorticity contours at $Re = 40$")
 ax.set_aspect("equal")
 plt.colorbar()
 plt.tight_layout()

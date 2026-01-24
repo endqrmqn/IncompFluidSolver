@@ -25,7 +25,7 @@ The governing equations may be written compactly as
 
     \begin{aligned}
         \begin{bmatrix}
-        I & G & H \\
+        I & G & -H \\
         D & 0 & 0 \\
         E & 0 & 0
         \end{bmatrix}\frac{\partial}{\partial t}
