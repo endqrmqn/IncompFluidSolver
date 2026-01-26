@@ -14,6 +14,7 @@ from ..spatial_discretization.sparse_matrix_operators import (
     divergence_data,
     gradient_data,
     assemble_matrix,
+    extract_full_jacobian,
 )
 
 
@@ -106,7 +107,9 @@ class TimeStepper:
                 qs1[:] = self.enforce_constraints(t, qs1)
                 # Second stage
                 t = (timevec[i - 1] + timevec[i]) / 2
-                rhs[:] = self.spatial_operators.evaluate_right_hand_side(t, qs1)
+                rhs[:] = self.spatial_operators.evaluate_right_hand_side(
+                    t, qs1
+                )
                 q += self.dt * rhs
                 q[:] = self.enforce_constraints(t, q)
 
@@ -118,3 +121,63 @@ class TimeStepper:
                     Q[:, k] = q if k < Q.shape[-1] else None
 
         return (Q, tsave)
+
+    def newton_solve(self, q0: xp.array, tol: float, maxiter: int) -> xp.array:
+        r"""
+        Compute a steady-state solution of the Navier-Stokes equation
+        using a Newton solver. The residual is defined as
+
+        .. math::
+
+            r(\mathbf{u}, p,\tilde{\mathbf{f}}) = N(\mathbf{u}) - Gp - E^\top \tilde{\mathbf{f}},
+
+        where :math:`\mathbf{u}` is the velocity, :math:`p` is the pressure and
+        :math:`\tilde{\mathbf{f}}` the immersed body forces (if an immersed body is present).
+
+        :param q0: initial guess
+        :type q0: xp.array
+        :param tol: error tolerance
+        :type tol: float
+        :param maxiter: maximum number of iterations
+        :type maxiter: int
+
+        :rtype: xp.array
+        """
+
+        spops = self.spatial_operators
+        mesh = spops.mesh
+        ib = self.immersed_body
+
+        # Check initial error
+        q = self.enforce_constraints(0.0, q0)
+        p = mesh.p.reshape(-1).copy()
+        f = ib.ftil.copy() if ib is not None else xp.empty(0)
+        res = self.spatial_operators.evaluate_right_hand_side(0.0, q)
+        res -= spops.G.dot(p)
+        res -= ib.E.T.dot(f) if ib is not None else 0
+        error = xp.linalg.norm(res)
+
+        szp = xp.prod(mesh.p.shape)
+        sz_constraints = szp + 1 if ib == None else szp + 1 + 2 * len(ib.xi)
+        constraints = xp.zeros(sz_constraints)
+        
+        iter = 0
+        print("Newton iteration %d - error = %1.15e" % (iter, error))
+        while error > tol and iter < maxiter:
+            rows, cols, data, _ = extract_full_jacobian(mesh, spops, 0.0, q, 1e-4, ib)
+            J = assemble_matrix(rows, cols, data)
+            Jlu = sps.linalg.splu(J)
+            rhs = xp.concatenate((res, constraints))
+            dq = Jlu.solve(rhs)[:-1]
+            q += dq[:len(q)]
+            p += dq[len(q) : len(q) + len(p)]
+            f += dq[-len(f):] if ib is not None else 0
+
+            res[:] = self.spatial_operators.evaluate_right_hand_side(0.0, q)
+            res -= spops.G.dot(p)
+            res -= ib.E.T.dot(f) if ib is not None else 0
+            error = xp.linalg.norm(res)
+            iter += 1
+            print("Newton iteration %d - error = %1.15e" % (iter, error))
+
+        return q

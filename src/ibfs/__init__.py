@@ -6,3 +6,4 @@ from .spatial_discretization.immersed_body import ImmersedBody
 from .temporal_discretization.time_stepper import TimeStepper
 from .utils.helpers import *
 from .utils.post_process import *
+from .utils.immersed_body import *

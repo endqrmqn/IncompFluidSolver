@@ -409,8 +409,8 @@ class SpatialOperators:
         :rtype: xp.array
         """
         vector_to_fields(t, q, self.mesh, self.bcs)
-        return q - self.G.dot(
-            self.LuLa.solve(
-                xp.concatenate((self.evaluate_divergence().reshape(-1), [0]))
-            )[:-1]
-        )
+        pvec = self.LuLa.solve(
+            xp.concatenate((self.evaluate_divergence().reshape(-1), [0]))
+        )[:-1]
+        self.mesh.p[:, :] = pvec.reshape(self.mesh.p.shape)
+        return q - self.G.dot(pvec)

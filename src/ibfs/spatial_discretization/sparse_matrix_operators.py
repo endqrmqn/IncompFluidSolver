@@ -1,4 +1,4 @@
-from typing import Tuple, List, TYPE_CHECKING
+from typing import Tuple, Optional, TYPE_CHECKING
 import numpy as xp
 import scipy.sparse as sps
 from functools import partial
@@ -6,6 +6,7 @@ from functools import partial
 if TYPE_CHECKING:
     from .mesh import Mesh
     from .spatial_operators import SpatialOperators
+    from .immersed_body import ImmersedBody
 
 from ..utils.helpers import (
     vector_to_fields,
@@ -256,12 +257,12 @@ def compute_matrix_data(rows_extract, cols_query, fun, Q, eps):
         vec[cols_query[k]] = 1.0
         q = (fun(Q + eps * vec) - fun(Q - eps * vec)) / (2 * eps)
         data.extend(q[rows_extract[k]])
-    return data
+    return xp.asarray(data)
 
 
 def assemble_matrix(rows, cols, data):
-    nr = xp.max(rows) + 1
-    nc = xp.max(cols) + 1
+    nr = int(xp.max(rows) + 1)
+    nc = int(xp.max(cols) + 1)
     rows, cols, data = _eliminate_zeros(rows, cols, data)
     return sps.csc_matrix((data, (rows, cols)), shape=(nr, nc))
 
@@ -281,3 +282,64 @@ def _eliminate_zeros(rows, cols, data):
     cols = xp.delete(cols, idces)
     data = xp.delete(data, idces)
     return rows, cols, data
+
+
+def extract_full_jacobian(
+    mesh: "Mesh",
+    spatial_ops: "SpatialOperators",
+    t: float,
+    Q: xp.array,
+    eps: float,
+    ib: Optional["ImmersedBody"] = None,
+):
+    szu = xp.prod(mesh.u_int.shape)
+    szv = xp.prod(mesh.v_int.shape)
+    szp = xp.prod(mesh.p.shape)
+
+    # Gradient and divergence operators (and singularity removal)
+    D = spatial_ops.D.tocoo()
+    G = spatial_ops.G.tocoo()
+    rows_d, cols_d, data_d = D.row, D.col, D.data
+    rows_g, cols_g, data_g = G.row, G.col, G.data
+    rows_d += szu + szv
+    cols_g += szu + szv
+    data_v = spatial_ops.La[:-1, -1].toarray().reshape(-1)
+    data_w = spatial_ops.La[-1, :-1].T.toarray().reshape(-1)
+
+    # Momentum operator
+    rows_m, cols_m, rows_extract, cols_query = momentum_sparsity_pattern(mesh)
+    data_m = momentum_data(spatial_ops, rows_extract, cols_query, t, Q, eps)
+    data_m *= -1.0
+
+    if ib is None:  # Immersed body off
+        rows_v = xp.arange(len(data_v)) + szu + szv
+        cols_v = xp.ones(len(data_v)) * (szu + szv + szp)
+        rows_w = cols_v.copy()
+        cols_w = rows_v.copy()
+        rows = xp.concatenate((rows_m, rows_d, rows_g, rows_v, rows_w))
+        cols = xp.concatenate((cols_m, cols_d, cols_g, cols_v, cols_w))
+        data = xp.concatenate((data_m, data_d, data_g, data_v, data_w))
+
+    else:  # Immersed body on
+        E = ib.E.tocoo()
+        rows_e, cols_e, data_e = E.row, E.col, E.data
+        rows_e += szu + szv + szp
+        rows_h = cols_e.copy()
+        cols_h = rows_e.copy()
+        data_h = data_e.copy()
+
+        rows_v = xp.arange(len(data_v)) + szu + szv
+        cols_v = xp.ones(len(data_v)) * (szu + szv + szp + 2 * len(ib.xi))
+        rows_w = cols_v.copy()
+        cols_w = rows_v.copy()
+        rows = xp.concatenate(
+            (rows_m, rows_d, rows_g, rows_v, rows_w, rows_e, rows_h)
+        )
+        cols = xp.concatenate(
+            (cols_m, cols_d, cols_g, cols_v, cols_w, cols_e, cols_h)
+        )
+        data = xp.concatenate(
+            (data_m, data_d, data_g, data_v, data_w, data_e, data_h)
+        )
+    
+    return (rows, cols, data, int(xp.max(rows) + 1))

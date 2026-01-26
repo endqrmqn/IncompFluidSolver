@@ -161,7 +161,10 @@ class ImmersedBody:
         vec = self.LuRQa.solve(xp.concatenate((self.R.dot(q) - rhsvec, [0])))[
             :-1
         ]
-        self.ftil = vec[xp.prod(spops.mesh.p.shape):]
+        spops.mesh.p[:, :] = vec[: xp.prod(spops.mesh.p.shape)].reshape(
+            spops.mesh.p.shape
+        )
+        self.ftil = vec[xp.prod(spops.mesh.p.shape) :]
         return q - self.Q.dot(vec)
 
     def recover_physical_forces(self, dt) -> xp.array:
@@ -180,8 +183,8 @@ class ImmersedBody:
 
         :rtype: xp.array
         """
-        return -self.spatial_operators.mesh.d**2 * self.ftil / self.S / dt
-    
+        return -(self.spatial_operators.mesh.d**2) * self.ftil / self.S / dt
+
     def compute_total_force_on_the_body(self, dt) -> Tuple[xp.array, xp.array]:
         r"""
         The total force exerted by the fluid on the body is given by
@@ -189,13 +192,13 @@ class ImmersedBody:
         .. math::
 
             \mathbf{F} = -\left(F_x, F_y\right) = \int_{\mathcal{S}}\mathbf{f}(\pmb{\xi}(s))\,ds.
-        
+
         (Notice the minus sign, since :math:`\mathbf{f}`, recovered through
         :func:`recover_physical_forces`, is the force exerted by the body
         on the fluid.)
-        
+
         :rtype: Tuple[xp.array, xp.array]
         """
         F = -self.recover_physical_forces(dt) * self.S
-        Fx, Fy = xp.sum(F[:len(self.xi)]), xp.sum(F[len(self.xi):])
+        Fx, Fy = xp.sum(F[: len(self.xi)]), xp.sum(F[len(self.xi) :])
         return Fx, Fy

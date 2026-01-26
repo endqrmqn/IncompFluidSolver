@@ -1,6 +1,6 @@
 import numpy as xp
 import ibfs
-import os
+import matplotlib.pyplot as plt
 
 
 def make_circle(D, d):
@@ -13,9 +13,9 @@ Re = 40
 # Define the spatial domain
 # discretized with 500 cells in the x direction and
 # 250 in the y direction
-x0, x1 = -10, 30
-y0, y1 = -15, 15
-nx, ny = 1000, 750
+x0, x1 = -5, 15
+y0, y1 = -5, 5
+nx, ny = 500, 250
 mesh = ibfs.Mesh(x0, x1, nx, y0, y1, ny)
 
 
@@ -63,17 +63,22 @@ spops = ibfs.SpatialOperators(Re, mesh, bcs, False)
 # at (0, 0)
 ib = ibfs.ImmersedBody(*make_circle(1.0, mesh.d), spops)
 
-# Instantiate the TimeStepper class to evolve the system
-# We integrate with a fixed delta t = 1e-2
-dt = 1e-2
-tstep = ibfs.TimeStepper(dt, spops, ib, scheme="RK2")
-
-# Run the time stepper from t = 0 to t = 100 with
-# initial condition q0 = 0
-q0 = xp.ones(xp.prod(mesh.u_int.shape) + xp.prod(mesh.v_int.shape))
-q0[xp.prod(mesh.u_int.shape) :] = 0.0
-Q, tsave = tstep.solve(0.0, 5000 * dt, 100, q0)
-
 save_path = "data/"
-os.makedirs(save_path, exist_ok=True)
-xp.save(save_path + "snapshot.npy", Q[:, -1])
+q = xp.load(save_path + "snapshot.npy")
+
+
+omega, X, Y = ibfs.compute_vorticity(0.0, q, mesh, bcs)
+
+plt.figure()
+plt.contour(X, Y, omega, cmap="bwr", levels=xp.arange(-3, 3 + 0.4, 0.4))
+plt.fill(ib.xi, ib.eta, color="k")
+ax = plt.gca()
+ax.set_ylim([-2.5, 2.5])
+ax.set_xlim([-2, 4])
+ax.set_xlabel(r"$x/D$")
+ax.set_ylabel(r"$y/D$")
+ax.set_title(r"Steady-state vorticity contours at $Re = 40$")
+ax.set_aspect("equal")
+plt.colorbar()
+plt.tight_layout()
+plt.show()

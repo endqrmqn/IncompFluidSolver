@@ -13,9 +13,9 @@ Re = 40
 # Define the spatial domain
 # discretized with 500 cells in the x direction and
 # 250 in the y direction
-x0, x1 = -10, 30
-y0, y1 = -15, 15
-nx, ny = 1000, 750
+x0, x1 = -5, 15
+y0, y1 = -5, 5
+nx, ny = 500, 250
 mesh = ibfs.Mesh(x0, x1, nx, y0, y1, ny)
 
 
@@ -72,8 +72,12 @@ tstep = ibfs.TimeStepper(dt, spops, ib, scheme="RK2")
 # initial condition q0 = 0
 q0 = xp.ones(xp.prod(mesh.u_int.shape) + xp.prod(mesh.v_int.shape))
 q0[xp.prod(mesh.u_int.shape) :] = 0.0
-Q, tsave = tstep.solve(0.0, 5000 * dt, 100, q0)
+Q, tsave = tstep.solve(0.0, 500 * dt, 100, q0)
+
+# Run the Newton solver
+qn = tstep.newton_solve(Q[:, -1], 1e-6, 10)
+
 
 save_path = "data/"
 os.makedirs(save_path, exist_ok=True)
-xp.save(save_path + "snapshot.npy", Q[:, -1])
+xp.save(save_path + "snapshot.npy", qn)
