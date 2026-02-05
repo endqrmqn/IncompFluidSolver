@@ -160,18 +160,20 @@ class TimeStepper:
         szp = xp.prod(mesh.p.shape)
         sz_constraints = szp + 1 if ib == None else szp + 1 + 2 * len(ib.xi)
         constraints = xp.zeros(sz_constraints)
-        
+
         iter = 0
         print("Newton iteration %d - error = %1.15e" % (iter, error))
         while error > tol and iter < maxiter:
-            rows, cols, data, _ = extract_full_jacobian(mesh, spops, 0.0, q, 1e-4, ib)
+            rows, cols, data, _ = extract_full_jacobian(
+                mesh, spops, 0.0, q, 1e-4, ib
+            )
             J = assemble_matrix(rows, cols, data)
             Jlu = sps.linalg.splu(J)
             rhs = xp.concatenate((res, constraints))
             dq = Jlu.solve(rhs)[:-1]
-            q += dq[:len(q)]
+            q += dq[: len(q)]
             p += dq[len(q) : len(q) + len(p)]
-            f += dq[-len(f):] if ib is not None else 0
+            f += dq[-len(f) :] if ib is not None else 0
 
             res[:] = self.spatial_operators.evaluate_right_hand_side(0.0, q)
             res -= spops.G.dot(p)

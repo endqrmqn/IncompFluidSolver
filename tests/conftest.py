@@ -17,16 +17,31 @@ def library(device_and_order):
     return cp if device == "gpu" else np
 
 
-@pytest.fixture(scope="session")
-def domain_and_Reynolds():
-    x0, x1 = -1, 1
-    y0, y1 = -0.5, 0.5
+@pytest.fixture(
+    scope="session",
+    params=[
+        (xvec, yvec, spacings)
+        for xvec, yvec, spacings in zip(
+            [[-2, -1, -0.5, 0.5, 1, 2], [-1, 1]],
+            [[-1.75, -0.5, 0], [-1, 0]],
+            [
+                [
+                    np.asarray([0.2, 0.15, 0.1, 0.18, 0.22]),
+                    np.asarray([0.19, 0.1]),
+                ],
+                [np.asarray([0.1]), np.asarray([0.1])],
+            ],
+        )
+    ],
+    ids=["Stretched grid", "Uniform grid"],
+)
+def domain_and_Reynolds(request):
     Re = 100
-    return (x0, x1, y0, y1, Re)
+    xvec, yvec, spacings = request.param
+    return (xvec, yvec, spacings, Re)
 
 
 @pytest.fixture(scope="session")
 def grid_sizes():
-    nys = np.asarray([100, 200, 400, 800, 1000, 1600, 3200])
-    nxs = 2 * nys
-    return (nxs, nys)
+    dxs_min = np.asarray([0.1, 0.05, 0.025, 0.01, 5e-3])
+    return dxs_min

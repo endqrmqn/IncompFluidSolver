@@ -341,5 +341,5 @@ def extract_full_jacobian(
         data = xp.concatenate(
             (data_m, data_d, data_g, data_v, data_w, data_e, data_h)
         )
-    
+
     return (rows, cols, data, int(xp.max(rows) + 1))

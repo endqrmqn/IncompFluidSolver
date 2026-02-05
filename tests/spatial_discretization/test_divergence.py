@@ -4,21 +4,30 @@ import pytest
 from .. import pytest_utils as pyut
 
 
-def test_divergence(domain_and_Reynolds, grid_sizes):
+def test_divergence(domain_and_Reynolds):
     r"""
-    Test for :func:`ibfs.SpatialOperators.evaluate_divergence`.
+    Test for :func:`ibfs.SpatialOperators.evaluate_divergence_integral`.
     Check that the spatial discretization is second-order.
     """
-    nxs, nys = grid_sizes
-    x0, x1, y0, y1, Re = domain_and_Reynolds
-    error = xp.zeros(len(nxs))
 
-    iter = 0
-    for nx, ny in zip(nxs, nys):
-        mesh = ibfs.Mesh(x0, x1, nx, y0, y1, ny)
+    xvec, yvec, spacings, Re = domain_and_Reynolds
+    dxs, dys = spacings
+    dxs /= 4
+    dys /= 4
+
+    niter = 5
+    error = xp.zeros(niter)
+    spacings = xp.zeros(niter)
+
+    for iter in range(niter):
+        dxs /= 2
+        dys /= 2
+        mesh = ibfs.Mesh_(
+            xvec, dxs, yvec, dys, mirror_y=True, check_equal_min_spacing=True
+        )
         bcs = pyut.instantiate_boundary_conditions(mesh)
         nsop = ibfs.SpatialOperators(Re, mesh, bcs, True)
-        _, torch_mesh = mesh.generate_meshgrids(output_torch=True)
+        _, torch_mesh = ibfs.generate_meshgrids(mesh, True)
         Xu, Yu, Xv, Yv, Xp, Yp = torch_mesh
 
         ufun, vfun, _ = pyut.analytical_functions()
@@ -29,11 +38,11 @@ def test_divergence(domain_and_Reynolds, grid_sizes):
         _, du_dx, _, _, _ = pyut.evaluate_fun_and_derivatives(Xp, Yp, ufun, xp)
         _, _, dv_dy, _, _ = pyut.evaluate_fun_and_derivatives(Xp, Yp, vfun, xp)
 
-        div_h = nsop.evaluate_divergence()
-        div = du_dx + dv_dy
+        vec = nsop.Mp.dot((du_dx + dv_dy).reshape(-1))
+        vech = nsop.evaluate_divergence_integral().reshape(-1)
+        error[iter] = xp.max(xp.abs(vec - vech))
+        spacings[iter] = xp.min(dxs)
 
-        error[iter] = xp.max(xp.abs(div - div_h))
-        iter += 1
-
-    order, _ = xp.polyfit(xp.log((x1 - x0) / nxs), xp.log(error), 1)
-    assert xp.abs(order - 2) < 1e-2 and error[-1] < 1e-3
+    order, _ = xp.polyfit(xp.log(spacings), xp.log(error), 1)
+    print(f"Order = {order}")
+    assert xp.abs(order - 4) / 4 < 1e-2 and error[-1] < 1e-7

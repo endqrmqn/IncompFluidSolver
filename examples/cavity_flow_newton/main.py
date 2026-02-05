@@ -62,7 +62,7 @@ dt = 5e-3
 tstep = ibfs.TimeStepper(dt, spops, None, scheme="RK2")
 
 # Run the time stepper from t = 0 to t = 20 with
-# initial condition q0 = 0 to compute an initial guess for 
+# initial condition q0 = 0 to compute an initial guess for
 # the Newton solver
 q0 = xp.zeros(xp.prod(mesh.u_int.shape) + xp.prod(mesh.v_int.shape))
 Q, tsave = tstep.solve(0.0, 20, 10, q0)
@@ -73,9 +73,3 @@ qn = tstep.newton_solve(Q[:, -1], 1e-6, 10)
 save_path = "data/"
 os.makedirs(save_path, exist_ok=True)
 xp.save(save_path + "snapshot.npy", qn)
-
-
-
-
-
-

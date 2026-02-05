@@ -73,16 +73,18 @@ save_path = "data/"
 q0 = xp.ones(xp.prod(mesh.u_int.shape) + xp.prod(mesh.v_int.shape))
 q0[xp.prod(mesh.u_int.shape) :] = 0.0
 # q0 = xp.load(save_path + 'snapshot.npy')
-Q, tsave = tstep.solve(0.0, 5000 * dt, 100, Q[:, -1])
+Q, tsave = tstep.solve(0.0, 300 * dt, 1, Q[:, -1])
 
 
-# os.makedirs(save_path, exist_ok=True)
-# xp.save(save_path + "snapshot.npy", Q[:, -1])
+os.makedirs(save_path, exist_ok=True)
+xp.save(save_path + "snapshot.npy", Q[:, -1])
 
 # %%
 # diff = Q[:, 1:] - Q[:, :-1]
 plt.figure()
-plt.plot(tsave, xp.linalg.norm(Q - xp.mean(Q, axis=-1).reshape(-1, 1), axis=0), 'o-')
+plt.plot(
+    tsave, xp.linalg.norm(Q - xp.mean(Q, axis=-1).reshape(-1, 1), axis=0), "o-"
+)
 # plt.plot(tsave[::10], xp.linalg.norm(Q[:, ::10] - xp.mean(Q[:, ::10], axis=-1).reshape(-1, 1), axis=0), 'r-')
 
 # %%
@@ -90,7 +92,7 @@ plt.plot(tsave, xp.linalg.norm(Q - xp.mean(Q, axis=-1).reshape(-1, 1), axis=0), 
 Qhat = sp.fft.rfft(Q[:, ::30], axis=-1) / len(tsave[::30])
 en = xp.linalg.norm(Qhat[:, :7], axis=0)
 T = tsave[-1] + dt
-freqs = 2 * xp.pi  / T * xp.arange(len(en))
+freqs = 2 * xp.pi / T * xp.arange(len(en))
 
 plt.figure()
 plt.stem(freqs, en, "o-")
@@ -122,7 +124,7 @@ omega_mean, _, _ = ibfs.compute_vorticity(0.0, xp.mean(Q, axis=-1), mesh, bcs)
 field = omega - omega_mean
 vmin = xp.min(field)
 vmax = xp.max(field)
-vmin = - vmax
+vmin = -vmax
 
 plt.figure()
 plt.contourf(X, Y, field, cmap="bwr", levels=50, vmin=vmin, vmax=vmax)
@@ -149,12 +151,12 @@ Qhat = sp.fft.rfft(Q_, axis=-1) / len(t_)
 omegas = omega * xp.arange(Qhat.shape[-1])
 dQHat = 1j * omegas * Qhat
 
-for i in range (Q_.shape[-1]):
+for i in range(Q_.shape[-1]):
     print("Evaluating jacobian %d / %d" % (i + 1, len(t_)))
     t = t_[i]
     q = Q_[:, i]
     rows, cols, data, sz = ibfs.extract_full_jacobian(mesh, spops, t, q, 1, ib)
-    
+
     if i == 0:
         Rows = rows.reshape(-1, 1)
         Cols = cols.reshape(-1, 1)
@@ -163,13 +165,13 @@ for i in range (Q_.shape[-1]):
         Rows = xp.concatenate((Rows, rows.reshape(-1, 1)), axis=-1)
         Cols = xp.concatenate((Cols, cols.reshape(-1, 1)), axis=-1)
         Data = xp.concatenate((Data, data.reshape(-1, 1)), axis=-1)
-        
 
-#%%
+
+# %%
 DataHat = sp.fft.rfft(Data, axis=-1) / Data.shape[-1]
 
-#%%
-path = 'jacobian/'
+# %%
+path = "jacobian/"
 os.makedirs(path, exist_ok=True)
 
 Nu = xp.prod(mesh.u_int.shape)
@@ -178,64 +180,72 @@ Np = xp.prod(mesh.p.shape)
 N = Nu + Nv + Np + 2 * len(ib.xi) + 1
 
 nf = 3
-xp.save(path + 'freqs.npy', omegas[:(nf + 1)])
-xp.save(path + 'rows.npy', Rows[:, 0])
-xp.save(path + 'cols.npy', Cols[:, 0])
-for j in range (nf + 1):
-    xp.save(path + 'vals_%02d.npy' % j, DataHat[:, j])
-    
+xp.save(path + "freqs.npy", omegas[: (nf + 1)])
+xp.save(path + "rows.npy", Rows[:, 0])
+xp.save(path + "cols.npy", Cols[:, 0])
+for j in range(nf + 1):
+    xp.save(path + "vals_%02d.npy" % j, DataHat[:, j])
+
     vec = xp.zeros(N, dtype=xp.complex128)
     vec[: Nu + Nv] = Qhat[:, j]
-    xp.save(path + 'Q_%02d.npy' % j, vec)
-    
+    xp.save(path + "Q_%02d.npy" % j, vec)
+
     vec = xp.zeros(N, dtype=xp.complex128)
     vec[: Nu + Nv] = dQHat[:, j]
-    xp.save(path + 'dQ_%02d.npy' % j, vec)
+    xp.save(path + "dQ_%02d.npy" % j, vec)
 
 szvel = xp.prod(mesh.u_int.shape) + xp.prod(mesh.v_int.shape)
 rows_id = xp.arange(szvel)
 cols_id = rows_id.copy()
 data_id = xp.ones(len(rows_id))
 
-xp.save(path + 'rows_id.npy', rows_id)
-xp.save(path + 'cols_id.npy', cols_id)
-xp.save(path + 'vals_id.npy', data_id)
+xp.save(path + "rows_id.npy", rows_id)
+xp.save(path + "cols_id.npy", cols_id)
+xp.save(path + "vals_id.npy", data_id)
 
-#%%
+# %%
 
-rows, cols, data, _ = ibfs.extract_full_jacobian(mesh, spops, 0.0, Q_[:, 0], 1.0, ib)
+rows, cols, data, _ = ibfs.extract_full_jacobian(
+    mesh, spops, 0.0, Q_[:, 0], 1.0, ib
+)
 
-#%%
+# %%
 M = ibfs.assemble_matrix(Rows[:, 0], Cols[:, 0], DataHat[:, 0].real)
 
-#%%
+# %%
 Mlu = sp.sparse.linalg.splu(M)
 
-#%%
+# %%
 
 
-#%%
+# %%
 y = xp.random.randn(M.shape[0])
 x = M.dot(y)
 
-path = 'jacobian/'
+path = "jacobian/"
 os.makedirs(path, exist_ok=True)
 # xp.save(path + 'rows.npy', rows)
 # xp.save(path + 'cols.npy', cols)
 # xp.save(path + 'data.npy', data)
 
-xp.save(path + 'y.npy', y)
-xp.save(path + 'x.npy', x)
+xp.save(path + "y.npy", y)
+xp.save(path + "x.npy", x)
 
-#%%
+# %%
 
-N = xp.prod(mesh.u_int.shape) + xp.prod(mesh.v_int.shape) + xp.prod(mesh.p.shape) + 2 * len(ib.xi) + 1
-for j in range (nf + 1):
+N = (
+    xp.prod(mesh.u_int.shape)
+    + xp.prod(mesh.v_int.shape)
+    + xp.prod(mesh.p.shape)
+    + 2 * len(ib.xi)
+    + 1
+)
+for j in range(nf + 1):
     vec = xp.zeros(N, dtype=xp.complex128)
     vec[:szvel] = 1j * j * omega * Qhat[:, j]
-    xp.save(path + 'Qhat_%02d.npy' % j, vec)
+    xp.save(path + "Qhat_%02d.npy" % j, vec)
 
-#%%
+# %%
 
 bcuvel_pert = ibfs.BoundaryConditions(
     "u",
@@ -268,34 +278,36 @@ plt.colorbar()
 plt.tight_layout()
 plt.show()
 
-#%%
+# %%
 
 omega, _, _ = ibfs.compute_vorticity(0.0, Qhat[:, 0].real, mesh, bcs)
 omega = omega.reshape(-1)
 OmegasHat = xp.zeros((len(omega), Qhat.shape[-1]), dtype=xp.complex128)
 OmegasHat[:, 0] = omega
-for i in range (1, OmegasHat.shape[-1]):
+for i in range(1, OmegasHat.shape[-1]):
     omegar, _, _ = ibfs.compute_vorticity(0.0, Qhat[:, i].real, mesh, bcs_pert)
     omegai, _, _ = ibfs.compute_vorticity(0.0, Qhat[:, i].imag, mesh, bcs_pert)
     omega = (omegar + 1j * omegai).reshape(-1)
     OmegasHat[:, i] = omega
-    
+
 en = xp.linalg.norm(OmegasHat, axis=0) ** 2
 
 
 plt.figure()
-plt.stem(freqs[:len(en)], en, "o-")
+plt.stem(freqs[: len(en)], en, "o-")
 ax = plt.gca()
 ax.set_xticks(freqs)
 ax.set_yscale("log")
 
-#%%
+# %%
 
-omega, _, _ = ibfs.compute_vorticity(0.0, Q_[:, 1] - xp.mean(Q_, axis=-1), mesh, bcs_pert)
+omega, _, _ = ibfs.compute_vorticity(
+    0.0, Q_[:, 1] - xp.mean(Q_, axis=-1), mesh, bcs_pert
+)
 
 vmin = xp.min(omega)
 vmax = xp.max(omega)
-vmin = - vmax
+vmin = -vmax
 
 plt.figure()
 plt.contourf(X, Y, omega, cmap="bwr", levels=25, vmin=vmin, vmax=vmax)

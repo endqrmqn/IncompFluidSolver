@@ -1,5 +1,6 @@
 import numpy as xp
 import scipy.sparse as sps
+from scipy.interpolate import interp1d, InterpolatedUnivariateSpline
 from typing import Tuple, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -42,6 +43,8 @@ class SpatialOperators:
         self.Re = Re
         self.mesh = mesh
         self.bcs = bcs
+
+        self.assemble_mass_matrix()
 
         if not test:
             self.assemble_divergence_matrix()
@@ -270,41 +273,257 @@ class SpatialOperators:
         )
         return (mom_x, mom_y)
 
-    def evaluate_pressure_gradient(self) -> Tuple[xp.array, xp.array]:
+    # def evaluate_streamwise_momentum_integral(
+    #     self, u, v, xu, yu, xv, yv, xc, yc, x, y, dx, dy, f
+    # ):
+    #     copy = False
+    #     kind = "quadratic"
+    #     extr = "extrapolate"
+
+    #     momentum = xp.zeros_like(self.mesh.u_int)
+
+    #     # Streamwise advection term (interpolate the u velocity to
+    #     # the cell centers so that we can compute fluxes)
+    #     uc = interp1d(xu, u, kind, -1, copy, fill_value=extr)(xc)
+    #     momentum -= (uc[1:-1, 1:] ** 2 - uc[1:-1, :-1] ** 2) * dy.reshape(
+    #         -1, 1
+    #     )
+    #     # Wall-normal advection term (interpolate u and v velocities to
+    #     # the corners of the x-staggered control volumes)
+    #     ucf = interp1d(yu, uc, kind, 0, copy, fill_value=extr)(y)
+    #     vcf = interp1d(yv, v, kind, 0, copy, fill_value=extr)(y)[:, 1:-1]
+    #     uv = ucf * vcf
+    #     momentum -= (
+    #         0.5
+    #         * (uv[1:, 1:] + uv[1:, :-1] - uv[:-1, 1:] - uv[:-1, :-1])
+    #         * 0.5
+    #         * (dx[1:] + dx[:-1]).reshape(1, -1)
+    #     )
+    #     # Laplacian
+    #     uf = interp1d(xu, u, kind, -1, copy, fill_value=extr)(x)
+    #     dudx = (uf[1:-1, 1:] - uf[1:-1, :-1]) / dx
+    #     # dudy = (u[1:, 1:-1] - u[:-1, 1:-1]) / (yv[1:] - yv[:-1]).reshape(-1, 1)
+    #     dudy = InterpolatedUnivariateSpline()
+    #     momentum += ((dudx[:, 1:] - dudx[:, :-1]) / self.Re) * dy.reshape(
+    #         -1, 1
+    #     )
+    #     momentum += (
+    #         ((dudy[1:, :] - dudy[:-1, :]) / self.Re)
+    #         * 0.5
+    #         * (dx[1:] + dx[:-1]).reshape(1, -1)
+    #     )
+    #     # External forcing term
+    #     momentum += f
+
+    #     return momentum
+
+    def evaluate_streamwise_momentum_integral(
+        self, u, v, xu, yu, xv, yv, xc, yc, x, y, dx, dy, f
+    ):
+        
+        def centroids_to_faces(fc, xc, xf):
+            # Interpolate field fc from centroids to cell faces
+            idces = [-1, 0, 1]
+            ff = xp.zeros_like(fc[:, 1:-1])
+            for idx, i in enumerate(idces):
+                xi = xp.roll(xc[1:-1], i)
+                pi = xp.ones_like(xi)
+                for j in xp.delete(idces, idx):
+                    xj = xp.roll(xc[1:-1], j)
+                    pi *= (xf[1:-1] - xj) / (xi - xj)
+                ff += xp.roll(fc[:, 1:-1], i, axis=-1) * pi[None, :]
+            return xp.concatenate(
+                (fc[:, 0].reshape(-1, 1), ff, fc[:, -1].reshape(-1, 1)),
+                axis=-1,
+            )
+        
+        def centroids_to_cell_centers(fc, xc, xcc, deriv=False):
+            # Interpolate fc from centroids to cell centers
+            idces = [-1, 0, 1]
+            ff = xp.zeros_like(fc[:, 2:-1])
+            df = xp.zeros_like(ff) if deriv else 0
+            for idx, i in enumerate(idces):
+                xi = xp.roll(xc[2:-1], i)
+                pi_ff = xp.ones_like(xi)
+                pi_df = xp.zeros_like(xi) if deriv else 0
+                for j in xp.delete(idces, idx):
+                    xj = xp.roll(xc[2:-1], j)
+                    ratio = (xcc[1:-1] - xj) / (xi - xj)
+                    pi_df += ratio if deriv else 0
+                    pi_ff *= ratio
+                ff += xp.roll(fc[:, 2:-1], i, axis=-1) * pi_ff[None, :]
+                df += xp.roll(fc[:, 2:-1], i, axis=-1) * pi_df[None, :] if deriv else 0
+
+            if not deriv:
+                return xp.concatenate(
+                    (
+                        0.5 * (fc[:, 0] + fc[:, 1])[:, None],
+                        ff,
+                        0.5 * (fc[:, -1] + fc[:, -2])[:, None],
+                    ),
+                    axis=-1,
+                )
+            else:
+                return (
+                    xp.concatenate(
+                        (
+                            0.5 * (fc[:, 0] + fc[:, 1])[:, None],
+                            ff,
+                            0.5 * (fc[:, -1] + fc[:, -2])[:, None],
+                        ),
+                        axis=-1,
+                    ),
+                    xp.concatenate(
+                        (
+                            ((fc[:, 1] - fc[:, 0]) / (xc[1] - xc[0]))[:, None],
+                            df,
+                            ((fc[:, -1] - fc[:, -2]) / (xc[-1] - xc[-2]))[
+                                :, None
+                            ],
+                        ),
+                        axis=-1,
+                    ),
+                )
+
+        momentum = xp.zeros_like(self.mesh.u_int)
+
+        # Streamwise advection term (interpolate the u velocity to
+        # the cell centers so that we can compute fluxes)
+        uc, ducx = centroids_to_cell_centers(u, xu, xc, deriv=True)
+        momentum -= (uc[1:-1, 1:] ** 2 - uc[1:-1, :-1] ** 2) * dy[:, None]
+        # # Wall-normal advection term (interpolate u and v velocities to
+        # # the corners of the x-staggered control volumes)
+        # ucf = centroids_to_cell_centers(uc.T, yu, y).T
+        # vcf = (centroids_to_faces(v.T, yv, y)[1:-1, :]).T
+        # uv = ucf * vcf
+        # momentum -= (
+        #     0.5
+        #     * (uv[1:, 1:] + uv[1:, :-1] - uv[:-1, 1:] - uv[:-1, :-1])
+        #     * 0.5
+        #     * (dx[1:] + dx[:-1])[None, :]
+        # )
+        # # Laplacian
+        # _, ducy = centroids_to_cell_centers(u.T, yu, y, deriv=True)
+        # ducy = ducy.T
+        # momentum += ((ducx[1:-1, 1:] - ducx[1:-1, :-1]) / self.Re) * dy[:, None]
+        # momentum += (
+        #     (ducy[1:, 1:-1] - ducy[:-1, 1:-1])
+        #     / self.Re
+        #     * 0.5
+        #     * (dx[1:] + dx[:-1])[None, :]
+        # )
+        # # External forcing term
+        # momentum += f * 0.5 * (dx[1:] + dx[:-1])[None, :] * dy[:, None]
+
+        return momentum
+
+    def evaluate_momentum_equation(self):
+        mesh = self.mesh
+        x_mom = self.evaluate_streamwise_momentum_integral(
+            mesh.u_ext,
+            mesh.v_ext,
+            mesh.xu,
+            mesh.yu,
+            mesh.xv,
+            mesh.yv,
+            mesh.xc,
+            mesh.yc,
+            mesh.x,
+            mesh.y,
+            mesh.dx,
+            mesh.dy,
+            mesh.fx_int,
+        )
+        # y_mom = self.evaluate_streamwise_momentum_integral(
+        #     mesh.v_ext.T,
+        #     mesh.u_ext.T,
+        #     mesh.yv,
+        #     mesh.xv,
+        #     mesh.yu,
+        #     mesh.xu,
+        #     mesh.yc,
+        #     mesh.xc,
+        #     mesh.y,
+        #     mesh.x,
+        #     mesh.dy,
+        #     mesh.dx,
+        #     mesh.fy_int.T,
+        # )
+        return x_mom
+
+    def evaluate_pressure_integral(self) -> Tuple[xp.array, xp.array]:
         r"""
-        Compute :math:`\left(\frac{\partial p}{\partial x}, \frac{\partial p}{\partial y}\right)`
-        at cell faces.
+        Compute 
+
+        .. math::
+
+            \int_{\mathcal{V}_{i,j}} \nabla p\,dV_{i,j} = 
+            \begin{bmatrix}
+                \left(p_{i,j+1} - p_{i,j}\right)\Delta y_{i} \\
+                \left(p_{i+1,j} - p_{i,j}\right)\Delta x_{j}
+            \end{bmatrix}
 
         :rtype: Tuple[xp.array, xp.array]
         """
-        return tuple(
-            [
-                self.evaluate_derivative_staggered(
-                    self.mesh.p, self.mesh.d, ax
-                )
-                for ax in [1, 0]
-            ]
+        return (
+            (self.mesh.p[:, 1:] - self.mesh.p[:, :-1]) * self.mesh.dy[:, None],
+            (self.mesh.p[1:, :] - self.mesh.p[:-1, :]) * self.mesh.dx[None, :],
         )
 
-    def evaluate_divergence(self) -> xp.array:
+    def evaluate_divergence_integral(self) -> xp.array:
         r"""
-        Compute :math:`\nabla\cdot \mathbf{u} = \partial_x u + \partial_y v`
-        at cell centers.
+        Compute :math:`\int_{\mathcal{V}_{i,j}} \nabla\cdot\mathbf{u}\,d V_{i,j}`.
+        Velocities are interpolated from cell centroids to cell faces according to the formula
+
+        .. math::
+
+            f(x) = \frac{\left(f_{j+1} - f_{j}\right)}{\left(x_{j+1} - x_{j}\right)}\left(x - x_j\right) + f_j,
+
+        where :math:`f_j` and :math:`x_j` are the values and coordinates at the cell centroids.
 
         :rtype: xp.array
         """
-        fields = [self.mesh.u_ext, self.mesh.v_ext]
-        axes = xp.flipud(xp.arange(self.mesh.p.ndim, dtype=xp.int32))  # [1, 0]
-        div = xp.zeros_like(self.mesh.p)
-        for i, f in enumerate(fields):
-            slc = [
-                slice(None) if j == axes[i] else slice(1, -1)
-                for j in range(len(axes))
-            ]
-            div += self.evaluate_derivative_staggered(
-                f, self.mesh.d, axis=axes[i]
-            )[tuple(slc)]
-        return div
+
+        def centroids_to_faces(fc, xc, xf):
+            # Interpolate field fc from centroids to cell faces
+            idces = [-1, 0, 1]
+            ff = xp.zeros_like(fc[:, 1:-1])
+            for idx, i in enumerate(idces):
+                xi = xp.roll(xc[1:-1], i)
+                pi = xp.ones_like(xi)
+                for j in xp.delete(idces, idx):
+                    xj = xp.roll(xc[1:-1], j)
+                    pi *= (xf[1:-1] - xj) / (xi - xj)
+                ff += xp.roll(fc[:, 1:-1], i, axis=-1) * pi[None, :]
+            return xp.concatenate(
+                (fc[:, 0].reshape(-1, 1), ff, fc[:, -1].reshape(-1, 1)),
+                axis=-1,
+            )
+
+        uf = centroids_to_faces(self.mesh.u_ext, self.mesh.xu, self.mesh.x)
+        vf = centroids_to_faces(self.mesh.v_ext.T, self.mesh.yv, self.mesh.y).T
+        return (uf[1:-1, 1:] - uf[1:-1, :-1]) * self.mesh.dy.reshape(-1, 1) + (
+            (vf[1:, 1:-1] - vf[:-1, 1:-1]) * self.mesh.dx.reshape(1, -1)
+        )
+
+    def assemble_mass_matrix(self):
+        r"""
+        Instantiate the attributes :code:`self.M` and :code:`self.Minv`, containing the
+        mass matrix :math:`M_{i,i} = \Delta x_{i}\Delta y_{i}` and its inverse.
+        """
+        dx = self.mesh.dx
+        dy = self.mesh.dy
+
+        data_u = xp.outer(dy, 0.5 * (dx[1:] + dx[:-1])).reshape(-1)
+        data_v = xp.outer(0.5 * (dy[1:] + dy[:-1]), dx).reshape(-1)
+        data = xp.concatenate((data_u, data_v))
+        rows = xp.arange(len(data))
+        self.M = assemble_matrix(rows, rows, data)
+        self.Minv = assemble_matrix(rows, rows, 1 / data)
+
+        data = xp.outer(dy, dx).reshape(-1)
+        rows = xp.arange(len(data))
+        self.Mp = assemble_matrix(rows, rows, data)
 
     def assemble_gradient_matrix(self):
         r"""

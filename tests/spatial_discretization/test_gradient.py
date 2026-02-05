@@ -1,4 +1,5 @@
 import numpy as xp
+import scipy as sp
 import ibfs
 import pytest
 from .. import pytest_utils as pyut
@@ -6,40 +7,48 @@ from .. import pytest_utils as pyut
 
 def test_gradient(domain_and_Reynolds, grid_sizes):
     r"""
-    Test for :func:`ibfs.SpatialOperators.evaluate_gradient`.
+    Test for :func:`ibfs.SpatialOperators.evaluate_gradient_integral`.
     Check that the spatial discretization is second-order.
     """
-    nxs, nys = grid_sizes
-    x0, x1, y0, y1, Re = domain_and_Reynolds
-    error_x = xp.zeros(len(nxs))
-    error_y = xp.zeros(len(nxs))
 
-    iter = 0
-    for nx, ny in zip(nxs, nys):
-        mesh = ibfs.Mesh(x0, x1, nx, y0, y1, ny)
+    xvec, yvec, spacings, Re = domain_and_Reynolds
+    dxs, dys = spacings
+    dxs /= 4
+    dys /= 4
+
+    niter = 5
+    error = xp.zeros(niter)
+    spacings = error.copy()
+
+    for iter in range(niter):
+        dxs /= 2
+        dys /= 2
+        mesh = ibfs.Mesh_(
+            xvec, dxs, yvec, dys, mirror_y=True, check_equal_min_spacing=True
+        )
         bcs = pyut.instantiate_boundary_conditions(mesh)
         nsop = ibfs.SpatialOperators(Re, mesh, bcs, True)
-        _, torch_mesh = mesh.generate_meshgrids(output_torch=True)
+        _, torch_mesh = ibfs.generate_meshgrids(mesh, True)
         Xu, Yu, Xv, Yv, Xp, Yp = torch_mesh
+        Xu = Xu[1:-1, 1:-1]
+        Yu = Yu[1:-1, 1:-1]
+        Xv = Xv[1:-1, 1:-1]
+        Yv = Yv[1:-1, 1:-1]
 
         _, _, pfun = pyut.analytical_functions()
         _, dp_dx, _, _, _ = pyut.evaluate_fun_and_derivatives(Xu, Yu, pfun, xp)
         _, _, dp_dy, _, _ = pyut.evaluate_fun_and_derivatives(Xv, Yv, pfun, xp)
         p, _, _, _, _ = pyut.evaluate_fun_and_derivatives(Xp, Yp, pfun, xp)
         mesh.p = p.copy()
-        dpdx_h, dpdy_h = nsop.evaluate_pressure_gradient()
-        dpdx = dp_dx[1:-1, 1:-1]
-        dpdy = dp_dy[1:-1, 1:-1]
 
-        error_x[iter] = xp.max(xp.abs(dpdx_h - dpdx))
-        error_y[iter] = xp.max(xp.abs(dpdy_h - dpdy))
-        iter += 1
+        dpdx_h, dpdy_h = nsop.evaluate_pressure_integral()
+        grad_h = xp.concatenate((dpdx_h.reshape(-1), dpdy_h.reshape(-1)))
+        grad = nsop.M.dot(
+            xp.concatenate((dp_dx.reshape(-1), dp_dy.reshape(-1)))
+        )
 
-    order_x, _ = xp.polyfit(xp.log((x1 - x0) / nxs), xp.log(error_x), 1)
-    order_y, _ = xp.polyfit(xp.log((x1 - x0) / nxs), xp.log(error_y), 1)
-    assert (
-        xp.abs(order_x - 2) < 1e-2
-        and xp.abs(order_y - 2) < 1e-2
-        and error_x[-1] < 1e-3
-        and error_y[-1] < 1e-3
-    )
+        error[iter] = xp.max(xp.abs(grad_h - grad))
+        spacings[iter] = xp.min(dxs)
+
+    order, _ = xp.polyfit(xp.log(spacings), xp.log(error), 1)
+    assert xp.abs(order - 4) / 4 < 1e-1 and error[-1] < 1e-8

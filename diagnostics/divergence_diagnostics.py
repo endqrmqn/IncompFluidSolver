@@ -1,50 +1,61 @@
-import numpy as np
-import torch
+import numpy as xp
 import ibfs
 import pytest_utils as pyut
 import matplotlib.pyplot as plt
 
-Re = 100
+
+xvec = xp.asarray([-2, -1, -0.5, 0.5, 1, 2])
+yvec = xp.asarray([-1.75, -0.5, 0])
+dxs = xp.asarray([0.2, 0.15, 0.1, 0.18, 0.21])
+dys = xp.asarray([0.2, 0.1])
+
+# xvec = xp.array([-1, 1])
+# yvec = xp.array([-1, 0])
+# dxs = xp.array([0.1])
+# dys = xp.array([0.1])
 
 
-x0 = -2
-x1 = 2
-y0 = -1
-y1 = 1
+dxs *= 0.5
+dys *= 0.5
 
-nys = np.asarray([100, 200, 400, 800, 1000, 1600])
-nxs = 2 * nys
-error_x = []
+niter = 5
+error = xp.zeros(niter)
+spacings = xp.zeros(niter)
 
-iter = 0
-for nx, ny in zip(nxs, nys):
-    mesh = ibfs.Mesh(x0, x1, nx, y0, y1, ny)
+for iter in range(niter):
+    dxs /= 2
+    dys /= 2
+    mesh = ibfs.Mesh_(
+        xvec, dxs, yvec, dys, mirror_y=True, check_equal_min_spacing=True
+    )
     bcs = pyut.instantiate_boundary_conditions(mesh)
-    nsop = ibfs.SpatialOperators(Re, mesh, bcs, True)
-    _, torch_mesh = mesh.generate_meshgrids(output_torch=True)
+    nsop = ibfs.SpatialOperators(100, mesh, bcs, True)
+    _, torch_mesh = ibfs.generate_meshgrids(mesh, True)
     Xu, Yu, Xv, Yv, Xp, Yp = torch_mesh
 
-    ufun, vfun, pfun = pyut.analytical_functions()
-    u, _, _, _, _ = pyut.evaluate_fun_and_derivatives(Xu, Yu, ufun, np)
-    v, _, _, _, _ = pyut.evaluate_fun_and_derivatives(Xv, Yv, vfun, np)
+    ufun, vfun, _ = pyut.analytical_functions()
+    u, _, _, _, _ = pyut.evaluate_fun_and_derivatives(Xu, Yu, ufun, xp)
+    v, _, _, _, _ = pyut.evaluate_fun_and_derivatives(Xv, Yv, vfun, xp)
     mesh.u_ext = u.copy()
     mesh.v_ext = v.copy()
-    _, du_dx, _, _, _ = pyut.evaluate_fun_and_derivatives(Xp, Yp, ufun, np)
-    _, _, dv_dy, _, _ = pyut.evaluate_fun_and_derivatives(Xp, Yp, vfun, np)
+    _, du_dx, _, _, _ = pyut.evaluate_fun_and_derivatives(Xp, Yp, ufun, xp)
+    _, _, dv_dy, _, _ = pyut.evaluate_fun_and_derivatives(Xp, Yp, vfun, xp)
 
-    t1 = nsop.evaluate_divergence()
-    truth_1 = du_dx + dv_dy
+    vec = nsop.Mp.dot((du_dx + dv_dy).reshape(-1))
+    vech = nsop.evaluate_divergence_integral().reshape(-1)
+    error[iter] = xp.max(xp.abs(vec - vech))
+    spacings[iter] = xp.min(dxs)
 
-    error_x.append(np.max(np.abs(t1 - truth_1)))
 
+order, _ = xp.polyfit(xp.log(spacings), xp.log(error), 1)
+print(order)
 
 plt.figure()
-plt.plot((x1 - x0) / nxs, error_x, "o-", label=r"divergence")
+plt.plot(spacings, error)
 ax = plt.gca()
 ax.set_yscale("log")
 ax.set_xscale("log")
 ax.set_xlabel(r"$\Delta x$")
 ax.set_ylabel(r"Error")
-plt.legend()
 plt.tight_layout()
 plt.show()

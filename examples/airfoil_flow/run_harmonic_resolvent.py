@@ -15,7 +15,7 @@ n = Nu + Nv + Np + 2 * Nib
 comm = PETSc.COMM_WORLD
 res4py.petscprint(comm, "Started job...")
 
-path = 'jacobian/'
+path = "jacobian/"
 
 
 # --- Load Matrices
@@ -64,7 +64,7 @@ Mass = res4py.read_harmonic_balanced_matrix(
 res4py.petscprint(comm, "Done reading mass matrix.")
 MassOp = res4py.linear_operators.MatrixLinearOperator(Mass, nblocks=nblocks)
 T = res4py.assemble_harmonic_resolvent_generator(A, perts_freqs, Mass)
-res4py.petscprint(comm, "Matrix size = %d"%N)
+res4py.petscprint(comm, "Matrix size = %d" % N)
 
 # Compute LU factorization
 res4py.petscprint(comm, "Computing LU decomposition...")
@@ -74,7 +74,9 @@ Tinv.scale(s)
 Tinv.axpy(-1.0, T)
 ksp = res4py.create_mumps_solver(Tinv)
 res4py.check_lu_factorization(Tinv, ksp)
-TinvOp = res4py.linear_operators.MatrixLinearOperator(Tinv, ksp, nblocks=nblocks)
+TinvOp = res4py.linear_operators.MatrixLinearOperator(
+    Tinv, ksp, nblocks=nblocks
+)
 res4py.petscprint(comm, TinvOp.get_block_cc_flag())
 
 # Read time-derivative of the base flow
@@ -103,16 +105,16 @@ Linop = res4py.linear_operators.ProductLinearOperator(
 
 U, S, V = res4py.randomized_svd(Linop, Linop.apply, 50, 2, 10, verbose=1)
 
-res4py.write_to_file('results/U.dat', U)
-res4py.write_to_file('results/V.dat', V)
+res4py.write_to_file("results/U.dat", U)
+res4py.write_to_file("results/V.dat", V)
 if comm.getRank() == 0:
-    np.save('results/S.npy', np.diag(S))
+    np.save("results/S.npy", np.diag(S))
 
-#x = res4py.read_vector('jacobian/x.dat', (Nl, N))
-#y = res4py.read_vector('jacobian/y.dat', (Nl, N))
-#y_ = TinvOp.solve(x, y)
-#y.axpy(-1.0, y_)
-#res4py.petscprint(comm, y_.norm())
+# x = res4py.read_vector('jacobian/x.dat', (Nl, N))
+# y = res4py.read_vector('jacobian/y.dat', (Nl, N))
+# y_ = TinvOp.solve(x, y)
+# y.axpy(-1.0, y_)
+# res4py.petscprint(comm, y_.norm())
 
 # res4py.petscprint(comm, "Computing eigendecomposition...")
 # lops = [MassOp, TinvOp, MassOp]
@@ -137,7 +139,7 @@ if comm.getRank() == 0:
 #     vjseq.destroy()
 #     Vfwd.restoreColumn(j, vj)
 
-# if comm.getRank() == 0: 
+# if comm.getRank() == 0:
 #     np.save('results_petsc/floquet_eigfunctions_nfp%02d.npy' % nfp, Vnp)
 
 

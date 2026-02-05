@@ -1,4 +1,4 @@
-from .spatial_discretization.mesh import Mesh
+from .spatial_discretization.mesh import Mesh, Mesh_
 from .spatial_discretization.spatial_operators import SpatialOperators
 from .spatial_discretization.sparse_matrix_operators import *
 from .spatial_discretization.boundary_conditions import BoundaryConditions

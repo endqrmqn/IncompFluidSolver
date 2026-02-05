@@ -74,11 +74,14 @@
 <div class="genindex-jumpbox">
  <a href="#A"><strong>A</strong></a>
  | <a href="#B"><strong>B</strong></a>
+ | <a href="#C"><strong>C</strong></a>
  | <a href="#D"><strong>D</strong></a>
  | <a href="#E"><strong>E</strong></a>
  | <a href="#G"><strong>G</strong></a>
  | <a href="#I"><strong>I</strong></a>
  | <a href="#M"><strong>M</strong></a>
+ | <a href="#N"><strong>N</strong></a>
+ | <a href="#R"><strong>R</strong></a>
  | <a href="#S"><strong>S</strong></a>
  | <a href="#T"><strong>T</strong></a>
  
@@ -98,6 +101,8 @@
 </li>
       <li><a href="spatial_discretization.html#ibfs.spatial_discretization.spatial_operators.SpatialOperators.assemble_laplacian_matrix">assemble_laplacian_matrix() (ibfs.spatial_discretization.spatial_operators.SpatialOperators method)</a>
 </li>
+      <li><a href="spatial_discretization.html#ibfs.spatial_discretization.spatial_operators.SpatialOperators.assemble_mass_matrix">assemble_mass_matrix() (ibfs.spatial_discretization.spatial_operators.SpatialOperators method)</a>
+</li>
       <li><a href="spatial_discretization.html#ibfs.spatial_discretization.spatial_operators.SpatialOperators.augment_pressure_laplacian">augment_pressure_laplacian() (ibfs.spatial_discretization.spatial_operators.SpatialOperators method)</a>
 </li>
   </ul></td>
@@ -107,6 +112,14 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="spatial_discretization.html#ibfs.spatial_discretization.boundary_conditions.BoundaryConditions">BoundaryConditions (class in ibfs.spatial_discretization.boundary_conditions)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="C">C</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="spatial_discretization.html#ibfs.spatial_discretization.immersed_body.ImmersedBody.compute_total_force_on_the_body">compute_total_force_on_the_body() (ibfs.spatial_discretization.immersed_body.ImmersedBody method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -136,13 +149,15 @@
 </li>
       <li><a href="spatial_discretization.html#ibfs.spatial_discretization.spatial_operators.SpatialOperators.evaluate_divergence">evaluate_divergence() (ibfs.spatial_discretization.spatial_operators.SpatialOperators method)</a>
 </li>
+      <li><a href="spatial_discretization.html#ibfs.spatial_discretization.spatial_operators.SpatialOperators.evaluate_divergence_integral">evaluate_divergence_integral() (ibfs.spatial_discretization.spatial_operators.SpatialOperators method)</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="spatial_discretization.html#ibfs.spatial_discretization.spatial_operators.SpatialOperators.evaluate_laplacian">evaluate_laplacian() (ibfs.spatial_discretization.spatial_operators.SpatialOperators method)</a>
 </li>
       <li><a href="spatial_discretization.html#ibfs.spatial_discretization.spatial_operators.SpatialOperators.evaluate_momentum_equation">evaluate_momentum_equation() (ibfs.spatial_discretization.spatial_operators.SpatialOperators method)</a>
 </li>
-      <li><a href="spatial_discretization.html#ibfs.spatial_discretization.spatial_operators.SpatialOperators.evaluate_pressure_gradient">evaluate_pressure_gradient() (ibfs.spatial_discretization.spatial_operators.SpatialOperators method)</a>
+      <li><a href="spatial_discretization.html#ibfs.spatial_discretization.spatial_operators.SpatialOperators.evaluate_pressure_integral">evaluate_pressure_integral() (ibfs.spatial_discretization.spatial_operators.SpatialOperators method)</a>
 </li>
       <li><a href="spatial_discretization.html#ibfs.spatial_discretization.spatial_operators.SpatialOperators.evaluate_right_hand_side">evaluate_right_hand_side() (ibfs.spatial_discretization.spatial_operators.SpatialOperators method)</a>
 </li>
@@ -196,8 +211,6 @@
         <li><a href="spatial_discretization.html#module-ibfs.spatial_discretization.sparse_matrix_operators">module</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     ibfs.spatial_discretization.spatial_operators
 
@@ -205,6 +218,8 @@
         <li><a href="spatial_discretization.html#module-ibfs.spatial_discretization.spatial_operators">module</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     ibfs.temporal_discretization.time_stepper
 
@@ -219,6 +234,12 @@
       <li><a href="spatial_discretization.html#ibfs.spatial_discretization.mesh.Mesh.info">info() (ibfs.spatial_discretization.mesh.Mesh method)</a>
 </li>
       <li><a href="spatial_discretization.html#ibfs.spatial_discretization.spatial_operators.SpatialOperators.interpolate_1d">interpolate_1d() (ibfs.spatial_discretization.spatial_operators.SpatialOperators method)</a>
+</li>
+      <li><a href="spatial_discretization.html#ibfs.spatial_discretization.spatial_operators.SpatialOperators.interpolate_to_cell_center">interpolate_to_cell_center() (ibfs.spatial_discretization.spatial_operators.SpatialOperators method)</a>
+</li>
+      <li><a href="spatial_discretization.html#ibfs.spatial_discretization.spatial_operators.SpatialOperators.interpolate_to_face_center">interpolate_to_face_center() (ibfs.spatial_discretization.spatial_operators.SpatialOperators method)</a>
+</li>
+      <li><a href="spatial_discretization.html#ibfs.spatial_discretization.spatial_operators.SpatialOperators.interpolate_u_to_v">interpolate_u_to_v() (ibfs.spatial_discretization.spatial_operators.SpatialOperators method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -248,6 +269,22 @@
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="spatial_discretization.html#ibfs.spatial_discretization.sparse_matrix_operators.momentum_sparsity_pattern">momentum_sparsity_pattern() (in module ibfs.spatial_discretization.sparse_matrix_operators)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="N">N</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="temporal_discretization.html#ibfs.temporal_discretization.time_stepper.TimeStepper.newton_solve">newton_solve() (ibfs.temporal_discretization.time_stepper.TimeStepper method)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="R">R</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="spatial_discretization.html#ibfs.spatial_discretization.immersed_body.ImmersedBody.recover_physical_forces">recover_physical_forces() (ibfs.spatial_discretization.immersed_body.ImmersedBody method)</a>
 </li>
   </ul></td>
 </tr></table>
