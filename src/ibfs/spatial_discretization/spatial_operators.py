@@ -273,153 +273,110 @@ class SpatialOperators:
         )
         return (mom_x, mom_y)
 
-    # def evaluate_streamwise_momentum_integral(
-    #     self, u, v, xu, yu, xv, yv, xc, yc, x, y, dx, dy, f
-    # ):
-    #     copy = False
-    #     kind = "quadratic"
-    #     extr = "extrapolate"
-
-    #     momentum = xp.zeros_like(self.mesh.u_int)
-
-    #     # Streamwise advection term (interpolate the u velocity to
-    #     # the cell centers so that we can compute fluxes)
-    #     uc = interp1d(xu, u, kind, -1, copy, fill_value=extr)(xc)
-    #     momentum -= (uc[1:-1, 1:] ** 2 - uc[1:-1, :-1] ** 2) * dy.reshape(
-    #         -1, 1
-    #     )
-    #     # Wall-normal advection term (interpolate u and v velocities to
-    #     # the corners of the x-staggered control volumes)
-    #     ucf = interp1d(yu, uc, kind, 0, copy, fill_value=extr)(y)
-    #     vcf = interp1d(yv, v, kind, 0, copy, fill_value=extr)(y)[:, 1:-1]
-    #     uv = ucf * vcf
-    #     momentum -= (
-    #         0.5
-    #         * (uv[1:, 1:] + uv[1:, :-1] - uv[:-1, 1:] - uv[:-1, :-1])
-    #         * 0.5
-    #         * (dx[1:] + dx[:-1]).reshape(1, -1)
-    #     )
-    #     # Laplacian
-    #     uf = interp1d(xu, u, kind, -1, copy, fill_value=extr)(x)
-    #     dudx = (uf[1:-1, 1:] - uf[1:-1, :-1]) / dx
-    #     # dudy = (u[1:, 1:-1] - u[:-1, 1:-1]) / (yv[1:] - yv[:-1]).reshape(-1, 1)
-    #     dudy = InterpolatedUnivariateSpline()
-    #     momentum += ((dudx[:, 1:] - dudx[:, :-1]) / self.Re) * dy.reshape(
-    #         -1, 1
-    #     )
-    #     momentum += (
-    #         ((dudy[1:, :] - dudy[:-1, :]) / self.Re)
-    #         * 0.5
-    #         * (dx[1:] + dx[:-1]).reshape(1, -1)
-    #     )
-    #     # External forcing term
-    #     momentum += f
-
-    #     return momentum
-
-    def evaluate_streamwise_momentum_integral(
+    def evaluate_momentum_integral(
         self, u, v, xu, yu, xv, yv, xc, yc, x, y, dx, dy, f
     ):
-        
         def centroids_to_faces(fc, xc, xf):
             # Interpolate field fc from centroids to cell faces
             idces = [-1, 0, 1]
             ff = xp.zeros_like(fc[:, 1:-1])
             for idx, i in enumerate(idces):
-                xi = xp.roll(xc[1:-1], i)
+                xi = xp.roll(xc, i)[1:-1]
                 pi = xp.ones_like(xi)
                 for j in xp.delete(idces, idx):
-                    xj = xp.roll(xc[1:-1], j)
+                    xj = xp.roll(xc, j)[1:-1]
                     pi *= (xf[1:-1] - xj) / (xi - xj)
-                ff += xp.roll(fc[:, 1:-1], i, axis=-1) * pi[None, :]
+                ff += xp.roll(fc, i, axis=-1)[:, 1:-1] * pi[None, :]
             return xp.concatenate(
                 (fc[:, 0].reshape(-1, 1), ff, fc[:, -1].reshape(-1, 1)),
                 axis=-1,
             )
-        
+
         def centroids_to_cell_centers(fc, xc, xcc, deriv=False):
             # Interpolate fc from centroids to cell centers
             idces = [-1, 0, 1]
-            ff = xp.zeros_like(fc[:, 2:-1])
+            ff = xp.zeros_like(fc[:, 1:-1])
             df = xp.zeros_like(ff) if deriv else 0
             for idx, i in enumerate(idces):
-                xi = xp.roll(xc[2:-1], i)
+                xi = xp.roll(xc, i)[1:-1]
                 pi_ff = xp.ones_like(xi)
-                pi_df = xp.zeros_like(xi) if deriv else 0
                 for j in xp.delete(idces, idx):
-                    xj = xp.roll(xc[2:-1], j)
-                    ratio = (xcc[1:-1] - xj) / (xi - xj)
-                    pi_df += ratio if deriv else 0
-                    pi_ff *= ratio
-                ff += xp.roll(fc[:, 2:-1], i, axis=-1) * pi_ff[None, :]
-                df += xp.roll(fc[:, 2:-1], i, axis=-1) * pi_df[None, :] if deriv else 0
+                    xj = xp.roll(xc, j)[1:-1]
+                    pi_ff *= (xcc[:-1] - xj) / (xi - xj)
+                ff += xp.roll(fc, i, axis=-1)[:, 1:-1] * pi_ff[None, :]
+                if deriv:
+                    factor = xp.zeros_like(xi)
+                    for j in xp.delete(idces, idx):
+                        xj = xp.roll(xc, j)[1:-1]
+                        factor += 1.0 / (xcc[:-1] - xj)
+                    pi_df = pi_ff * factor
+                    df += xp.roll(fc, i, axis=-1)[:, 1:-1] * pi_df[None, :]
+
+            idces = [-3, -2, -1]
+            fl = xp.zeros_like(ff[:, -1])
+            dfl = xp.zeros_like(df[:, -1]) if deriv else 0
+            for idx, i in enumerate(idces):
+                pi_fl = xp.prod(
+                    [
+                        (xcc[-1] - xc[j]) / (xc[i] - xc[j])
+                        for j in xp.delete(idces, idx)
+                    ]
+                )
+                fl += fc[:, i] * pi_fl
+                if deriv:
+                    factor = xp.sum(
+                        [
+                            1.0 / (xcc[-1] - xc[j])
+                            for j in xp.delete(idces, idx)
+                        ]
+                    )
+                    dfl += fc[:, i] * pi_fl * factor
 
             if not deriv:
-                return xp.concatenate(
-                    (
-                        0.5 * (fc[:, 0] + fc[:, 1])[:, None],
-                        ff,
-                        0.5 * (fc[:, -1] + fc[:, -2])[:, None],
-                    ),
-                    axis=-1,
-                )
+                return xp.concatenate((ff, fl[:, None]), axis=-1)
             else:
                 return (
-                    xp.concatenate(
-                        (
-                            0.5 * (fc[:, 0] + fc[:, 1])[:, None],
-                            ff,
-                            0.5 * (fc[:, -1] + fc[:, -2])[:, None],
-                        ),
-                        axis=-1,
-                    ),
-                    xp.concatenate(
-                        (
-                            ((fc[:, 1] - fc[:, 0]) / (xc[1] - xc[0]))[:, None],
-                            df,
-                            ((fc[:, -1] - fc[:, -2]) / (xc[-1] - xc[-2]))[
-                                :, None
-                            ],
-                        ),
-                        axis=-1,
-                    ),
+                    xp.concatenate((ff, fl[:, None]), axis=-1),
+                    xp.concatenate((df, dfl[:, None]), axis=-1),
                 )
 
-        momentum = xp.zeros_like(self.mesh.u_int)
+        momentum = xp.zeros_like(u[1:-1, 1:-1])
 
         # Streamwise advection term (interpolate the u velocity to
         # the cell centers so that we can compute fluxes)
         uc, ducx = centroids_to_cell_centers(u, xu, xc, deriv=True)
         momentum -= (uc[1:-1, 1:] ** 2 - uc[1:-1, :-1] ** 2) * dy[:, None]
-        # # Wall-normal advection term (interpolate u and v velocities to
-        # # the corners of the x-staggered control volumes)
-        # ucf = centroids_to_cell_centers(uc.T, yu, y).T
-        # vcf = (centroids_to_faces(v.T, yv, y)[1:-1, :]).T
-        # uv = ucf * vcf
-        # momentum -= (
-        #     0.5
-        #     * (uv[1:, 1:] + uv[1:, :-1] - uv[:-1, 1:] - uv[:-1, :-1])
-        #     * 0.5
-        #     * (dx[1:] + dx[:-1])[None, :]
-        # )
-        # # Laplacian
-        # _, ducy = centroids_to_cell_centers(u.T, yu, y, deriv=True)
-        # ducy = ducy.T
-        # momentum += ((ducx[1:-1, 1:] - ducx[1:-1, :-1]) / self.Re) * dy[:, None]
-        # momentum += (
-        #     (ducy[1:, 1:-1] - ducy[:-1, 1:-1])
-        #     / self.Re
-        #     * 0.5
-        #     * (dx[1:] + dx[:-1])[None, :]
-        # )
-        # # External forcing term
-        # momentum += f * 0.5 * (dx[1:] + dx[:-1])[None, :] * dy[:, None]
+        # Wall-normal advection term (interpolate u and v velocities to
+        # the corners of the x-staggered control volumes)
+        ucf = centroids_to_cell_centers(uc.T, yu, y).T
+        vcf = (centroids_to_faces(v.T, yv, y)[1:-1, :]).T
+        uv = ucf * vcf
+        momentum -= (
+            0.5
+            * (uv[1:, 1:] + uv[1:, :-1] - uv[:-1, 1:] - uv[:-1, :-1])
+            * 0.5
+            * (dx[1:] + dx[:-1])[None, :]
+        )
+        # Laplacian
+        _, ducy = centroids_to_cell_centers(u.T, yu, y, deriv=True)
+        ducy = ducy.T
+        momentum += ((ducx[1:-1, 1:] - ducx[1:-1, :-1]) / self.Re) * dy[
+            :, None
+        ]
+        momentum += (
+            (ducy[1:, 1:-1] - ducy[:-1, 1:-1])
+            / self.Re
+            * 0.5
+            * (dx[1:] + dx[:-1])[None, :]
+        )
+        # External forcing term
+        momentum += f * 0.5 * (dx[1:] + dx[:-1])[None, :] * dy[:, None]
 
         return momentum
 
     def evaluate_momentum_equation(self):
         mesh = self.mesh
-        x_mom = self.evaluate_streamwise_momentum_integral(
+        x_mom = self.evaluate_momentum_integral(
             mesh.u_ext,
             mesh.v_ext,
             mesh.xu,
@@ -434,22 +391,22 @@ class SpatialOperators:
             mesh.dy,
             mesh.fx_int,
         )
-        # y_mom = self.evaluate_streamwise_momentum_integral(
-        #     mesh.v_ext.T,
-        #     mesh.u_ext.T,
-        #     mesh.yv,
-        #     mesh.xv,
-        #     mesh.yu,
-        #     mesh.xu,
-        #     mesh.yc,
-        #     mesh.xc,
-        #     mesh.y,
-        #     mesh.x,
-        #     mesh.dy,
-        #     mesh.dx,
-        #     mesh.fy_int.T,
-        # )
-        return x_mom
+        y_mom = self.evaluate_momentum_integral(
+            mesh.v_ext.T,
+            mesh.u_ext.T,
+            mesh.yv,
+            mesh.xv,
+            mesh.yu,
+            mesh.xu,
+            mesh.yc,
+            mesh.xc,
+            mesh.y,
+            mesh.x,
+            mesh.dy,
+            mesh.dx,
+            mesh.fy_int.T,
+        )
+        return (x_mom, y_mom.T)
 
     def evaluate_pressure_integral(self) -> Tuple[xp.array, xp.array]:
         r"""
@@ -484,24 +441,26 @@ class SpatialOperators:
         :rtype: xp.array
         """
 
-        def centroids_to_faces(fc, xc, xf):
+        def centroids_to_faces_(fc, xc, xf):
             # Interpolate field fc from centroids to cell faces
             idces = [-1, 0, 1]
             ff = xp.zeros_like(fc[:, 1:-1])
             for idx, i in enumerate(idces):
-                xi = xp.roll(xc[1:-1], i)
+                xi = xp.roll(xc, i)[1:-1]
                 pi = xp.ones_like(xi)
                 for j in xp.delete(idces, idx):
-                    xj = xp.roll(xc[1:-1], j)
+                    xj = xp.roll(xc, j)[1:-1]
                     pi *= (xf[1:-1] - xj) / (xi - xj)
-                ff += xp.roll(fc[:, 1:-1], i, axis=-1) * pi[None, :]
+                ff += xp.roll(fc, i, axis=-1)[:, 1:-1] * pi[None, :]
             return xp.concatenate(
-                (fc[:, 0].reshape(-1, 1), ff, fc[:, -1].reshape(-1, 1)),
+                (fc[:, 0][:, None], ff, fc[:, -1][:, None]),
                 axis=-1,
             )
 
-        uf = centroids_to_faces(self.mesh.u_ext, self.mesh.xu, self.mesh.x)
-        vf = centroids_to_faces(self.mesh.v_ext.T, self.mesh.yv, self.mesh.y).T
+        uf = centroids_to_faces_(self.mesh.u_ext, self.mesh.xu, self.mesh.x)
+        vf = centroids_to_faces_(
+            self.mesh.v_ext.T, self.mesh.yv, self.mesh.y
+        ).T
         return (uf[1:-1, 1:] - uf[1:-1, :-1]) * self.mesh.dy.reshape(-1, 1) + (
             (vf[1:, 1:-1] - vf[:-1, 1:-1]) * self.mesh.dx.reshape(1, -1)
         )

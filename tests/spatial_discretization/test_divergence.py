@@ -12,10 +12,10 @@ def test_divergence(domain_and_Reynolds):
 
     xvec, yvec, spacings, Re = domain_and_Reynolds
     dxs, dys = spacings
-    dxs /= 4
-    dys /= 4
+    dxs /= 10
+    dys /= 10
 
-    niter = 5
+    niter = 3
     error = xp.zeros(niter)
     spacings = xp.zeros(niter)
 

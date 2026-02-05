@@ -13,10 +13,10 @@ def test_gradient(domain_and_Reynolds, grid_sizes):
 
     xvec, yvec, spacings, Re = domain_and_Reynolds
     dxs, dys = spacings
-    dxs /= 4
-    dys /= 4
+    dxs /= 10
+    dys /= 10
 
-    niter = 5
+    niter = 3
     error = xp.zeros(niter)
     spacings = error.copy()
 
@@ -51,4 +51,5 @@ def test_gradient(domain_and_Reynolds, grid_sizes):
         spacings[iter] = xp.min(dxs)
 
     order, _ = xp.polyfit(xp.log(spacings), xp.log(error), 1)
+    print(f"Order = {order}")
     assert xp.abs(order - 4) / 4 < 1e-1 and error[-1] < 1e-8

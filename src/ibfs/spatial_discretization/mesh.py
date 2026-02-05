@@ -147,6 +147,14 @@ class Mesh_:
         mirror_y=False,
         check_equal_min_spacing=False,
     ):
+        if (len(dxvec) + 1 != len(xvec)) or (len(dyvec) + 1 != len(yvec)):
+            raise ValueError(
+                f"The length of the spacings vector (i.e., dxvec or dyvec) should be "
+                f"one less than the length of the coordinates vector (i.e., xvec or yvec). "
+                f"Currently len(dxvec) = {len(dxvec)}, len(xvec) = {len(xvec)}, "
+                f"len(dyvec) = {len(dyvec)},, and len(yvec) = {len(yvec)}."
+            )
+
         # Assemble x mesh
         self.x = self.assemble_mesh(xvec, dxvec)
         self.x = (
