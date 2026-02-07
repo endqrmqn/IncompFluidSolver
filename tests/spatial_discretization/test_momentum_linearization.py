@@ -10,12 +10,13 @@ def test_momentum_linearization(domain_and_Reynolds):
     Test routines involved in the extraction
     of the linearized momentum equation matrix
     """
-    x0, x1, y0, y1, Re = domain_and_Reynolds
-    ny, nx = 50, 100
-
-    mesh = ibfs.Mesh(x0, x1, nx, y0, y1, ny)
+    xvec = [-3, -1, -0.5, 0.5, 1, 2]
+    dxvec = [0.2, 0.1, 0.05, 0.075, 0.15]
+    yvec = [-2, -1, 0.5, 0]
+    dyvec = [0.2, 0.1, 0.05]
+    mesh = ibfs.Mesh(xvec, dxvec, yvec, dyvec, False, True)
     bcs = pyut.instantiate_boundary_conditions(mesh)
-    nsop = ibfs.SpatialOperators(Re, mesh, bcs, False)
+    nsop = ibfs.SpatialOperators(100, mesh, bcs, False)
 
     eps = 1e-1
     szflow = xp.prod(mesh.u_int.shape) + xp.prod(mesh.v_int.shape)

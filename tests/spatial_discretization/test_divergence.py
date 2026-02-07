@@ -22,7 +22,7 @@ def test_divergence(domain_and_Reynolds):
     for iter in range(niter):
         dxs /= 2
         dys /= 2
-        mesh = ibfs.Mesh_(
+        mesh = ibfs.Mesh(
             xvec, dxs, yvec, dys, mirror_y=True, check_equal_min_spacing=True
         )
         bcs = pyut.instantiate_boundary_conditions(mesh)

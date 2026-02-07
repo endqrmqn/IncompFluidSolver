@@ -73,16 +73,16 @@ class ImmersedBody:
 
         The sparse matrix :math:`E` is stored as attribute :code:`self.E`.
         """
-        d = self.spatial_operators.mesh.d
+        d = xp.min(self.spatial_operators.mesh.dx)
         szu = xp.prod(self.spatial_operators.mesh.u_int.shape)
         szv = xp.prod(self.spatial_operators.mesh.v_int.shape)
         xvecs = [
-            self.spatial_operators.mesh.xu,
-            self.spatial_operators.mesh.xv,
+            self.spatial_operators.mesh.xu[1:-1],
+            self.spatial_operators.mesh.xv[1:-1],
         ]
         yvecs = [
-            self.spatial_operators.mesh.yu,
-            self.spatial_operators.mesh.yv,
+            self.spatial_operators.mesh.yu[1:-1],
+            self.spatial_operators.mesh.yv[1:-1],
         ]
         shift = [0, szu]
         iter = 0
@@ -107,7 +107,7 @@ class ImmersedBody:
                     xm, ym = x[jvec[m]], y[ivec[m]]
                     d_x = self.discrete_delta(xm - xii, d)
                     d_y = self.discrete_delta(ym - etai, d)
-                    val = (self.spatial_operators.mesh.d**2) * d_x * d_y
+                    val = (d**2) * d_x * d_y
                     if xp.abs(val) > 0.0:
                         rows.append(l + iter * len(self.xi))
                         cols.append(ivec[m] * len(x) + jvec[m] + shift[iter])
@@ -154,7 +154,8 @@ class ImmersedBody:
         vector_to_fields(t, q, spops.mesh, spops.bcs)
         rhsvec = xp.concatenate(
             (
-                spops.D.dot(q) - spops.evaluate_divergence().reshape(-1),
+                spops.D.dot(q)
+                - spops.evaluate_divergence_integral().reshape(-1),
                 self.vel_ib,
             )
         )
@@ -183,7 +184,8 @@ class ImmersedBody:
 
         :rtype: xp.array
         """
-        return -(self.spatial_operators.mesh.d**2) * self.ftil / self.S / dt
+        d = xp.min(self.spatial_operators.mesh.dx)
+        return -(d**2) * self.ftil / self.S / dt
 
     def compute_total_force_on_the_body(self, dt) -> Tuple[xp.array, xp.array]:
         r"""

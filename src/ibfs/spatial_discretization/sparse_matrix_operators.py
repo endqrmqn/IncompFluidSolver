@@ -219,7 +219,7 @@ def gradient_data(
 ):
     def grad_fun(p):
         spatial_ops.mesh.p[:, :] = p.reshape(*spatial_ops.mesh.p.shape)
-        dpdx, dpdy = spatial_ops.evaluate_pressure_gradient()
+        dpdx, dpdy = spatial_ops.evaluate_pressure_integral()
         spatial_ops.mesh.p[:, :] = 0.0
         return xp.concatenate((dpdx.reshape(-1), dpdy.reshape(-1)))
 
@@ -232,7 +232,7 @@ def divergence_data(
 ):
     def div_fun(vec):
         vector_to_fields(0.0, vec, spatial_ops.mesh, spatial_ops.bcs)
-        div = spatial_ops.evaluate_divergence().reshape(-1)
+        div = spatial_ops.evaluate_divergence_integral().reshape(-1)
         zero_out_fields(spatial_ops.mesh)
         return div
 

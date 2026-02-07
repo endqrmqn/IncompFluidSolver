@@ -6,10 +6,12 @@ Re = 1000
 
 # Define the spatial domain (a box of size 1 x 1)
 # discretized with 200 cells in the x and y directions
-x0, x1 = -0.5, 0.5
-y0, y1 = -0.5, 0.5
-nx, ny = 200, 200
-mesh = ibfs.Mesh(x0, x1, nx, y0, y1, ny)
+xvec = xp.array([-0.5, 0])
+dxvec = xp.array([0.005])
+# xvec = xp.array([-0.5, 0.5])
+# dxvec = xp.array([0.005])
+
+mesh = ibfs.Mesh(xvec, dxvec, xvec, dxvec, True, True)
 
 # Define the boundary conditions. Zero velocity boundary conditions
 # on all sides, except the u = 1 at the top wall
@@ -58,14 +60,36 @@ spops = ibfs.SpatialOperators(Re, mesh, bcs)
 
 # Instantiate the TimeStepper class to evolve the system
 # We integrate with a fixed delta t = 5e-3
-dt = 5e-3
+dt = 2e-3
 tstep = ibfs.TimeStepper(dt, spops, None, scheme="RK2")
 
 # Run the time stepper from t = 0 to t = 100 with
 # initial condition q0 = 0
 q0 = xp.zeros(xp.prod(mesh.u_int.shape) + xp.prod(mesh.v_int.shape))
-Q, tsave = tstep.solve(0.0, 100, 10, q0)
+Q, tsave = tstep.solve(0.0, 20, 500, Q[:, -1])
 
 save_path = "data/"
 os.makedirs(save_path, exist_ok=True)
 xp.save(save_path + "snapshot.npy", Q[:, -1])
+
+import matplotlib.pyplot as plt
+
+Xu, Yu, Xv, Yv, _, _ = ibfs.generate_meshgrids(mesh, False)
+# %%
+
+fig, ax = plt.subplots(nrows=1, ncols=2)
+ax[0].contourf(Xu, Yu, mesh.u_ext, cmap="inferno", levels=200)
+ax[0].set_aspect("equal")
+ax[0].set_xlabel(r"$x/L$")
+ax[0].set_ylabel(r"$y/L$")
+ax[0].set_title(r"$u$ velocity")
+
+ax[1].contourf(Xv, Yv, mesh.v_ext, cmap="bwr", levels=200)
+ax[1].set_aspect("equal")
+ax[1].set_xlabel(r"$x/L$")
+ax[1].set_yticks([])
+ax[1].set_title(r"$v$ velocity")
+
+plt.tight_layout()
+
+plt.show()

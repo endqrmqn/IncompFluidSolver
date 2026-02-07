@@ -10,6 +10,8 @@ if TYPE_CHECKING:
 
 from ..utils.helpers import (
     vector_to_fields,
+    compute_limited_face_values,
+    quadratic_interpolation,
 )
 from .sparse_matrix_operators import (
     divergence_sparsity_pattern,
@@ -54,225 +56,6 @@ class SpatialOperators:
             self.augment_pressure_laplacian()
             self.LuLa = sps.linalg.splu(self.La)
 
-    def interpolate_1d(self, w: xp.array, axis: int) -> xp.array:
-        r"""
-        Perform 1d interpolation of the :math:`r`-dimensional array
-        :math:`w` along the direction specified by :code:`axis`.
-
-        :param w: two-dimensional array we wish to interpolate
-        :type w: xp.array
-        :param axis: direction of interpolation
-        :type axis: int
-
-        .. attention::
-
-            This function returns an array of a different size than the
-            original input array :math:`w`. If :math:`w` has size :math:`n\times m`,
-            the dimension along :code:`axis` is reduced by :math:`1`.
-
-        :rtype: xp.array
-        """
-        # For reference: slice(start, stop, step)
-        slc0 = [slice(None)] * w.ndim
-        slc1 = [slice(None)] * w.ndim
-        slc0[axis] = slice(None, -1)  # Slice from 0 to -1 in axis direction
-        slc1[axis] = slice(1, None)  # Slice from 1 to end in axis direction
-        return 0.5 * (w[tuple(slc0)] + w[tuple(slc1)])
-
-    def evaluate_derivative(
-        self, w: xp.array, d: float, order: int, axis: int
-    ):
-        r"""
-        Evaluate derivative of field :math:`w` in the direction specified by :code:`axis`.
-        The order of the derivative (i.e., first or second) is specified by :code:`order`.
-        We use a second-order central difference scheme.
-
-        :param w: two-dimensional array
-        :type w: xp.array
-        :param d: grid spacing
-        :type d: float
-        :param order: order of the derivative
-        :type order: int
-        :param axis: direction along which to take the derivative
-        :type axis: int
-
-        :rtype: xp.array
-        """
-        slcm1 = [slice(None)] * w.ndim
-        slcp1 = [slice(None)] * w.ndim
-        slc0 = [slice(None)] * w.ndim
-        slcm1[axis] = slice(None, -2)  # Slice from 0 to -1 in axis direction
-        slcp1[axis] = slice(2, None)  # Slice from 1 to end in axis direction
-        slc0[axis] = slice(1, -1, 1)
-
-        return (
-            (w[tuple(slcp1)] - w[tuple(slcm1)]) / (2 * d)
-            if order == 1
-            else (w[tuple(slcp1)] - 2 * w[tuple(slc0)] + w[tuple(slcm1)])
-            / (d**2)
-        )
-
-    def evaluate_derivative_staggered(
-        self, w: xp.array, d: float, axis: int
-    ) -> xp.array:
-        r"""
-        Evaluate the first derivative of field :math:`w` in
-        the direction specified by :code:`axis`.
-        This function is used for the gradient and divergence evaluation
-        in the Navier-Stokes equation.
-
-        :param w: two-dimensional array
-        :type w: xp.array
-        :param d: grid spacing
-        :type d: float
-        :param axis: direction along which to take the derivative
-        :type axis: int
-
-        :rtype: xp.array
-        """
-        slcm = [slice(None)] * w.ndim
-        slcp = [slice(None)] * w.ndim
-        slcm[axis] = slice(None, -1)
-        slcp[axis] = slice(1, None)
-        return (w[tuple(slcp)] - w[tuple(slcm)]) / d
-
-    def evaluate_laplacian(self, w: xp.array, d: float) -> xp.array:
-        r"""
-        Compute :math:`\nabla^2 w = \left(\partial_x^2 w + \partial_y^2 w\right)`,
-        where :math:`w` is either the :math:`x` or :math:`y` velocity field.
-
-        .. attention::
-
-            This function returns an array of a different size than the
-            original input array :math:`w`. If :math:`w` has size :math:`n\times m`,
-            the dimension of the output array will be :math:`(n-2)\times (m-2)`.
-
-        :param w: two-dimensional array
-        :type w: xp.array
-        :param d: grid spacing
-        :type d: float
-
-        :rtype: cupy/numpy array
-        """
-        size = tuple([s - 2 for s in w.shape])
-        dw = xp.zeros(size, dtype=w.dtype)
-        axes = xp.arange(w.ndim, dtype=xp.int32)
-        for axis in axes:
-            slc = [slice(1, -1) if i != axis else slice(None) for i in axes]
-            dw += self.evaluate_derivative(w, d, 2, axis)[tuple(slc)]
-        return dw
-
-    def evaluate_streamwise_advection(
-        self, u: xp.array, v: xp.array, d: float
-    ) -> xp.array:
-        r"""
-        Compute
-
-        .. math::
-
-            \int_{Y} u^2(x,y)\big\lvert_{x=x_{l}}^{x=x_r}\,dy +
-            \int_{X}\left[u(x,y)v(x,y)\right]_{y={y_b}}^{y=y_{t}}\,dx
-
-        on each finite volume (see Figure 2 in the docs/notes/cfd_solver_details.pdf).
-
-        .. attention::
-
-            This function returns an array of size :math:`n_y \times (n_x - 1)`,
-            where :math:`n_y` and :math:`n_x` are the number of internal cell
-            centers in the :math:`y` and :math:`x` directions, respectively.
-
-        :param u: streamwise velocity field
-        :type u: xp.array
-        :param v: wall-normal velocity field
-        :type v: xp.array
-        :param d: grid spacing
-        :type d: float
-
-        :rtype: xp.array
-        """
-        # Compute u_interp_x = (u_{i,j+1} + u_{i,j})/2
-        u_interp_x = self.interpolate_1d(u, axis=1)
-        # Compute u_interp_y = (u_{i+1,j} + u_{i,j})/2
-        u_interp_y = self.interpolate_1d(u, axis=0)
-        # Compute v_interp_x = (v_{i,j+1} + v_{i,j})/2
-        v_interp_x = self.interpolate_1d(v, axis=1)
-
-        return (
-            u_interp_x[1:-1, 1:] ** 2
-            - u_interp_x[1:-1, :-1] ** 2
-            + u_interp_y[1:, 1:-1] * v_interp_x[1:, 1:-1]
-            - u_interp_y[:-1, 1:-1] * v_interp_x[:-1, 1:-1]
-        ) * d
-
-    def evaluate_wallnormal_advection(
-        self, u: xp.array, v: xp.array, d: float
-    ) -> xp.array:
-        r"""
-        Compute
-
-        .. math::
-
-            \int_{X} v^2(x,y)\big\lvert_{y=y_{b}}^{y=y_t}\,dx +
-            \int_{Y}\left[u(x,y)v(x,y)\right]_{x={x_l}}^{x=x_{t}}\,dy
-
-        on each finite volume (see Figure 3 in the docs/notes/cfd_solver_details.pdf).
-
-        .. attention::
-
-            This function returns an array of size :math:`(n_y-1) \times n_x`,
-            where :math:`n_y` and :math:`n_x` are the number of internal cell
-            centers in the :math:`y` and :math:`x` directions, respectively.
-
-        :param u: streamwise velocity field
-        :type u: xp.array
-        :param v: wall-normal velocity field
-        :type v: xp.array
-        :param d: grid spacing
-        :type d: float
-
-        :rtype: cupy/numpy array
-        """
-        # Compute u_interp_y = (u_{i+1,j} + u_{i,j})/2
-        u_interp_y = self.interpolate_1d(u, axis=0)
-        # Compute v_interp_y = (v_{i+1,j} + v_{i,j})/2
-        v_interp_y = self.interpolate_1d(v, axis=0)
-        # Compute v_interp_y = (v_{i,j+1} + v_{i,j})/2
-        v_interp_x = self.interpolate_1d(v, axis=1)
-
-        return (
-            v_interp_y[1:, 1:-1] ** 2
-            - v_interp_y[:-1, 1:-1] ** 2
-            + v_interp_x[1:-1, 1:] * u_interp_y[1:-1, 1:]
-            - v_interp_x[1:-1, :-1] * u_interp_y[1:-1, :-1]
-        ) * d
-
-    def evaluate_momentum_equation(self) -> Tuple[xp.array, xp.array]:
-        r"""
-        Evaluate the discretized momentum equation (without pressure) in the
-        incompressible Navier-Stokes equations. Returns a 2-tuple
-        containing the evaluation of the :math:`x`- and :math:`y`-momentum
-        equations.
-
-        :rtype: Tuple[xp.array, xp.array]
-        """
-        mom_x = (
-            self.evaluate_laplacian(self.mesh.u_ext, self.mesh.d) / self.Re
-            - self.evaluate_streamwise_advection(
-                self.mesh.u_ext, self.mesh.v_ext, self.mesh.d
-            )
-            / (self.mesh.d**2)
-            + self.mesh.fx_int
-        )
-        mom_y = (
-            self.evaluate_laplacian(self.mesh.v_ext, self.mesh.d) / self.Re
-            - self.evaluate_wallnormal_advection(
-                self.mesh.u_ext, self.mesh.v_ext, self.mesh.d
-            )
-            / (self.mesh.d**2)
-            + self.mesh.fy_int
-        )
-        return (mom_x, mom_y)
-
     def evaluate_momentum_integral(
         self, u, v, xu, yu, xv, yv, xc, yc, x, y, dx, dy, f
     ):
@@ -293,6 +76,7 @@ class SpatialOperators:
             )
 
         def centroids_to_cell_centers(fc, xc, xcc, deriv=False):
+
             # Interpolate fc from centroids to cell centers
             idces = [-1, 0, 1]
             ff = xp.zeros_like(fc[:, 1:-1])
@@ -340,39 +124,42 @@ class SpatialOperators:
                     xp.concatenate((df, dfl[:, None]), axis=-1),
                 )
 
-        momentum = xp.zeros_like(u[1:-1, 1:-1])
+        momn = xp.zeros_like(u[1:-1, 1:-1])
 
         # Streamwise advection term (interpolate the u velocity to
         # the cell centers so that we can compute fluxes)
-        uc, ducx = centroids_to_cell_centers(u, xu, xc, deriv=True)
-        momentum -= (uc[1:-1, 1:] ** 2 - uc[1:-1, :-1] ** 2) * dy[:, None]
+        uc = compute_limited_face_values(u, xu, xc, u[:, :-1])
+        # uc, _ = quadratic_interpolation(u, xu, xc)
+        momn -= (uc[1:-1, 1:] ** 2 - uc[1:-1, :-1] ** 2) * dy[:, None]
         # Wall-normal advection term (interpolate u and v velocities to
         # the corners of the x-staggered control volumes)
-        ucf = centroids_to_cell_centers(uc.T, yu, y).T
-        vcf = (centroids_to_faces(v.T, yv, y)[1:-1, :]).T
+        uc, ducx = quadratic_interpolation(u, xu, xc, deriv=True)
+        vcf, _ = quadratic_interpolation(v.T, yv, y)
+        vcf = vcf[1:-1, :].T
+        # ucf, _ = quadratic_interpolation(uc.T, yu, y)
+        # ucf = ucf.T
+        ucf = compute_limited_face_values(uc.T, yu, y, vcf.T).T
         uv = ucf * vcf
-        momentum -= (
+        momn -= (
             0.5
             * (uv[1:, 1:] + uv[1:, :-1] - uv[:-1, 1:] - uv[:-1, :-1])
             * 0.5
             * (dx[1:] + dx[:-1])[None, :]
         )
         # Laplacian
-        _, ducy = centroids_to_cell_centers(u.T, yu, y, deriv=True)
+        _, ducy = quadratic_interpolation(u.T, yu, y, deriv=True)
         ducy = ducy.T
-        momentum += ((ducx[1:-1, 1:] - ducx[1:-1, :-1]) / self.Re) * dy[
-            :, None
-        ]
-        momentum += (
+        momn += ((ducx[1:-1, 1:] - ducx[1:-1, :-1]) / self.Re) * dy[:, None]
+        momn += (
             (ducy[1:, 1:-1] - ducy[:-1, 1:-1])
             / self.Re
             * 0.5
             * (dx[1:] + dx[:-1])[None, :]
         )
         # External forcing term
-        momentum += f * 0.5 * (dx[1:] + dx[:-1])[None, :] * dy[:, None]
+        momn += f * 0.5 * (dx[1:] + dx[:-1])[None, :] * dy[:, None]
 
-        return momentum
+        return momn
 
     def evaluate_momentum_equation(self):
         mesh = self.mesh
@@ -440,27 +227,13 @@ class SpatialOperators:
 
         :rtype: xp.array
         """
-
-        def centroids_to_faces_(fc, xc, xf):
-            # Interpolate field fc from centroids to cell faces
-            idces = [-1, 0, 1]
-            ff = xp.zeros_like(fc[:, 1:-1])
-            for idx, i in enumerate(idces):
-                xi = xp.roll(xc, i)[1:-1]
-                pi = xp.ones_like(xi)
-                for j in xp.delete(idces, idx):
-                    xj = xp.roll(xc, j)[1:-1]
-                    pi *= (xf[1:-1] - xj) / (xi - xj)
-                ff += xp.roll(fc, i, axis=-1)[:, 1:-1] * pi[None, :]
-            return xp.concatenate(
-                (fc[:, 0][:, None], ff, fc[:, -1][:, None]),
-                axis=-1,
-            )
-
-        uf = centroids_to_faces_(self.mesh.u_ext, self.mesh.xu, self.mesh.x)
-        vf = centroids_to_faces_(
+        uf, _ = quadratic_interpolation(
+            self.mesh.u_ext, self.mesh.xu, self.mesh.x
+        )
+        vf, _ = quadratic_interpolation(
             self.mesh.v_ext.T, self.mesh.yv, self.mesh.y
-        ).T
+        )
+        vf = vf.T
         return (uf[1:-1, 1:] - uf[1:-1, :-1]) * self.mesh.dy.reshape(-1, 1) + (
             (vf[1:, 1:-1] - vf[:-1, 1:-1]) * self.mesh.dx.reshape(1, -1)
         )
@@ -494,7 +267,7 @@ class SpatialOperators:
             self.mesh
         )
         data = gradient_data(self, rows_extract, cols_query, 1.0)
-        self.G = assemble_matrix(rows, cols, data)
+        self.G = self.Minv.dot(assemble_matrix(rows, cols, data))
 
     def assemble_divergence_matrix(self):
         r"""
@@ -574,7 +347,9 @@ class SpatialOperators:
         """
         vector_to_fields(t, q, self.mesh, self.bcs)
         xmom, ymom = self.evaluate_momentum_equation()
-        return xp.concatenate((xmom.reshape(-1), ymom.reshape(-1)))
+        return self.Minv.dot(
+            xp.concatenate((xmom.reshape(-1), ymom.reshape(-1)))
+        )
 
     def enforce_divergence_free(self, t, q):
         r"""
@@ -588,7 +363,9 @@ class SpatialOperators:
         """
         vector_to_fields(t, q, self.mesh, self.bcs)
         pvec = self.LuLa.solve(
-            xp.concatenate((self.evaluate_divergence().reshape(-1), [0]))
+            xp.concatenate(
+                (self.evaluate_divergence_integral().reshape(-1), [0])
+            )
         )[:-1]
         self.mesh.p[:, :] = pvec.reshape(self.mesh.p.shape)
         return q - self.G.dot(pvec)

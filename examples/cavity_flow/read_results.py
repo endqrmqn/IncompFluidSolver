@@ -6,14 +6,16 @@ import matplotlib.pyplot as plt
 Re = 1000
 
 # Define the spatial domain (a box of size 1 x 1)
-# discretized with 150 cells in the x and y directions
-x0, x1 = -0.5, 0.5
-y0, y1 = -0.5, 0.5
-nx, ny = 200, 200
-mesh = ibfs.Mesh(x0, x1, nx, y0, y1, ny)
+# discretized with 200 cells in the x and y directions
+xvec = xp.array([-0.5, 0])
+dxvec = xp.array([0.005])
+# xvec = xp.array([-0.5, 0.5])
+# dxvec = xp.array([0.005])
+
+mesh = ibfs.Mesh(xvec, dxvec, xvec, dxvec, True, True)
 
 # Define the boundary conditions. Zero velocity boundary conditions
-# on all sides, except the u = 1 at the bottom wall
+# on all sides, except the u = 1 at the top wall
 
 # U velocity boundary conditons
 zeros_lr_u = xp.zeros(mesh.u_int.shape[0])
@@ -57,7 +59,7 @@ save_path = "data/"
 q = xp.load(save_path + "snapshot.npy")
 
 ibfs.vector_to_fields(0.0, q, mesh, bcs)
-Xu, Yu, Xv, Yv, _, _ = mesh.generate_meshgrids(False)
+Xu, Yu, Xv, Yv, _, _ = ibfs.generate_meshgrids(mesh, False)
 
 
 fig, ax = plt.subplots(nrows=1, ncols=2)
@@ -73,6 +75,8 @@ ax[1].set_xlabel(r"$x/L$")
 ax[1].set_yticks([])
 ax[1].set_title(r"$v$ velocity")
 
+plt.tight_layout()
+
 plt.show()
 
 idx = xp.argmin(xp.abs(Xu[0,]))
@@ -84,11 +88,12 @@ idx = xp.argmin(xp.abs(Re_ghia - Re))
 uvel_ghia = data_ghia[:, idx + 1]
 
 plt.figure()
-plt.plot(uvel[1:-1], Yu[1:-1, 0] + y1, "k", label="Present")
+plt.plot(uvel[1:-1], Yu[1:-1, 0] + 0.5, "k", label="Present")
 plt.plot(uvel_ghia, data_ghia[:, 0], "ro", label="Ghia et al., (1982)")
 ax = plt.gca()
 ax.set_xlabel(r"$u / u_{\infty}$ velocity")
 ax.set_ylabel(r"$y / L$")
 ax.set_aspect("equal")
 plt.legend()
+plt.tight_layout()
 plt.show()

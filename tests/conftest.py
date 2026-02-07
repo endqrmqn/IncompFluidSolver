@@ -23,7 +23,7 @@ def library(device_and_order):
         (xvec, yvec, spacings)
         for xvec, yvec, spacings in zip(
             [[-3, -1, -0.5, 0.5, 1, 2], [-1, 1]],
-            [[-3, -1, -0.5, 0], [-1, 0]],
+            [[-2, -1, -0.5, 0], [-1, 0]],
             [
                 [
                     np.asarray([0.4, 0.2, 0.1, 0.2, 0.3]),

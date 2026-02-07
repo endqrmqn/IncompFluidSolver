@@ -2,6 +2,7 @@ import numpy as xp
 import torch
 from typing import Tuple, TYPE_CHECKING, Optional, List
 from scipy.spatial import cKDTree
+import random as rand
 
 if TYPE_CHECKING:
     from ..spatial_discretization.mesh import Mesh
@@ -99,110 +100,161 @@ def generate_meshgrids(
         return xp_tensors
 
 
-# class LinearReconstruction:
-
-#     def __init__(self):
-
-#         self.a = 0
-#         self.b = 0
-#         self.xc = 0
-#         self.bounds = 0
-
-#     def create_interpolant(self, xc, xf, u):
-
-#         dx = xf[1:] - xf[:-1]
-#         xf2, xf1, xf0 = xf[2:], xf[1:-1], xf[:-2]
-#         lhs = (0.5 * (xf2 ** 2 - xf1 ** 2) - xc[:-1] * (xf2 - xf1)).reshape(1, -1)
-#         rhs = u[:, 1:] * dx[1:].reshape(1, -1) - u[:, :-1] * (xf2 - xf1).reshape(1, -1)
-#         a = rhs / lhs
-
-#         xf2, xf1, xf0 = xf[-1], xf[-2], xf[-3]
-#         lhs = 0.5 * (xf1 ** 2 - xf0 ** 2) - xc[-1] * (xf1 - xf0)
-#         rhs = u[:, -2] * dx[-2] - u[:, -1] * (xf1 - xf0)
-
-#         self.a = xp.concatenate((a, (rhs / lhs).reshape(-1, 1)), axis=0)
-#         self.b = u.copy()
-#         self.xc = xc.copy()
-#         self.bounds = xf.copy()
-#         self.tree = cKDTree(self.xc.reshape(-1, 1))
-
-#     def interpolate(self, x):
-#         _, indices = cKDTree.query(x.reshape(-1, 1))
-#         return self.a[:, indices] * ((x - x[indices]).reshape(1, -1)) + self.b
-
-#     def derivative(self, x):
-#         _, indices = cKDTree.query(x.reshape(-1, 1))
-#         return self.a[:, indices]
+def centroids_to_faces(fc, xc, xf):
+    # Interpolate field fc from centroids to cell faces
+    idces = [-1, 0, 1]
+    ff = xp.zeros_like(fc[:, 1:-1])
+    for idx, i in enumerate(idces):
+        xi = xp.roll(xc, i)[1:-1]
+        pi = xp.ones_like(xi)
+        for j in xp.delete(idces, idx):
+            xj = xp.roll(xc, j)[1:-1]
+            pi *= (xf[1:-1] - xj) / (xi - xj)
+        ff += xp.roll(fc, i, axis=-1)[:, 1:-1] * pi[None, :]
+    return xp.concatenate(
+        (fc[:, 0].reshape(-1, 1), ff, fc[:, -1].reshape(-1, 1)),
+        axis=-1,
+    )
 
 
-class FastLinearReconstruction:
-    """
-    Fast, vectorized 1D linear reconstruction for 2D arrays (n x m),
-    using precomputed slopes for interpolation and derivative evaluation.
+def quadratic_interpolation(fc, xc, xcc, deriv=False):
+    r"""
+    Given the :math:`u` velocity stored at :math:`x`-staggered cell centroids, we compute
+    the velocity :math:`u`at the faces of the :math:`x`-staggered cells (i.e., the grid
+    cell centers). (Notice that
+    for a uniform grid, the centroids are located at grid cell faces) The reconstruction is achieved with
+    quadratic interpolation. In particular, at face :math:`x_{j+1/2}` we have
+
+    .. math::
+
+        u_{j+1/2} = \sum_{i=j-1}^{j+1}l_i(x)\prod_{\substack{k=j-1\\k\neq i}}^{j+1}\frac{x-x_k}{x_j - x_k}
+
+    :param fc: array of size :math:`n_y \times n_x` corresponding to streamwise velocity
+        values at :math:`x`-staggered-cell centroids
+    :type fc: xp.array
+    :param xc: :math:`x` coordinates of the staggered-cell centroids (size :math:`n_x`)
+    :type xc: xp.array
+    :param xcc: :math:`x` coordinates of the faces (size :math:`n_x - 1`)
+    :type xcc: xp.array
     """
 
-    def __init__(self):
-        self.a = None  # slopes
-        self.b = None  # intercepts
-        self.x = None  # grid points
-        self.n = 0
-        self.m = 0
-
-    def create_interpolant(self, x, y):
+    def _interp_(fs, xs, x, deriv):
+        r"""
+        :param fs: :math:`\{f_{0}, f_{1}, f_{2}\}`. The first value is the
+            "far upwind" one, the middle value is the "upwind" one, and the third value
+            is the "downwind" one. So, for a face at :math:`x_{j+1/2}` with :math:`f_j > 0`
+            we have :math:`\{f_{j-1}, f_{j}, f_{j+1}\}`. For face :math:`x_{j-1/2}` with
+            :math:`f_j < 0`, we have :math:`\{f_{j+1}, f_{j}, f_{j-1}\}`.
+        :param xs: :math:`\{x_{0}, x_{1}, x_{2}\}` (:math:`x`-coordinates of :math:`f_i`.)
+        :param x: evaluation points
         """
-        Precompute slopes and intercepts for linear interpolation.
+        xjm1, xj, xjp1 = xs
+        fjm1, fj, fjp1 = fs
 
-        Parameters
-        ----------
-        x : 1D array of length m, strictly increasing
-        y : 2D array of shape (n, m) - function values at x
-        """
-        self.x = xp.asarray(x)
-        y = xp.asarray(y)
-        self.n, self.m = y.shape
+        Ljm1 = (x - xj) * (x - xjp1) / ((xjm1 - xj) * (xjm1 - xjp1))
+        Ljp1 = (x - xj) * (x - xjm1) / ((xjp1 - xj) * (xjp1 - xjm1))
+        f = fj + (fjm1 - fj) * Ljm1[None, :] + (fjp1 - fj) * Ljp1[None, :]
 
-        dx = self.x[1:] - self.x[:-1]  # length m-1
-        self.a = (y[:, 1:] - y[:, :-1]) / dx[None, :]  # n x (m-1)
-        self.b = y[:, :-1]  # n x (m-1)
+        df = 0
+        if deriv:
+            dLjm1 = ((x - xj) + (x - xjp1)) / ((xjm1 - xj) * (xjm1 - xjp1))
+            dLjp1 = ((x - xj) + (x - xjm1)) / ((xjp1 - xj) * (xjp1 - xjm1))
+            df = (fjp1 - fj) * dLjp1[None, :] + (fjm1 - fj) * dLjm1[None, :]
 
-    def interpolate(self, x_eval):
-        """
-        Evaluate linear interpolation at x_eval points.
+        return (f, df)
 
-        Parameters
-        ----------
-        x_eval : array-like of shape (k,)
+    xjm1, xj, xjp1 = xc[:-2], xc[1:-1], xc[2:]
+    fjm1, fj, fjp1 = fc[:, :-2], fc[:, 1:-1], fc[:, 2:]
 
-        Returns
-        -------
-        y_eval : array of shape (n, k)
-        """
-        x_eval = xp.asarray(x_eval)
-        # Find interval indices
-        indices = xp.searchsorted(self.x, x_eval) - 1
-        indices = xp.clip(indices, 0, self.m - 2)
-
-        # Vectorized evaluation
-        y_eval = (
-            self.a[:, indices] * (x_eval - self.x[indices])[None, :]
-            + self.b[:, indices]
+    same_length = True if len(xcc) == len(xc) else False
+    xtarget = xcc[1:-1] if same_length else xcc[1:]
+    f_rgw, df_r = _interp_([fjm1, fj, fjp1], [xjm1, xj, xjp1], xtarget, deriv)
+    
+    if not same_length:
+        f_lgw, df_l = _interp_(
+            [fjp1[:, :1], fj[:, :1], fjm1[:, :1]],
+            [xjp1[:1], xj[:1], xjm1[:1]],
+            xcc[:1],
+            deriv,
         )
-        return y_eval
+        f = xp.concatenate((f_lgw, f_rgw), axis=-1)
+        df = xp.concatenate((df_l, df_r), axis=-1) if deriv else 0
+    else:
+        f = xp.concatenate(
+            (fc[:, 0][:, None], f_rgw, fc[:, -1][:, None]), axis=-1
+        )
+        df = 0
+        if deriv:
+            dx0 = xcc[1] - xcc[0]
+            df0 = (-3 * f[:, 0] + 4 * f[:, 1] - f[:, 2]) / (2 * dx0)
+            dx1 = xcc[-1] - xcc[-2]
+            df1 = (f[:, -3] - 4 * f[:, -2] + f[:, -1]) / (2 * dx1)
+            df = xp.concatenate((df0[:, None], df_r, df1[:, None]), axis=-1)
 
-    def derivative(self, x_eval):
+    return (f, df)
+
+
+def compute_limited_face_values(fc, xc, xcc, f_upw):
+    r"""
+    Given the :math:`u` velocity stored at :math:`x`-staggered cell centroids, we compute
+    the velocity :math:`u`at the faces of the :math:`x`-staggered cells (i.e., the grid
+    cell centers). (Notice that
+    for a uniform grid, the centroids are located at grid cell faces) The reconstruction is achieved with
+    quadratic interpolation. In particular, at face :math:`x_{j+1/2}` we have
+
+    .. math::
+
+        u_{j+1/2} = \sum_{i=j-1}^{j+1}l_i(x)\prod_{\substack{k=j-1\\k\neq i}}^{j+1}\frac{x-x_k}{x_j - x_k}
+
+    :param fc: array of size :math:`n_y \times n_x` corresponding to streamwise velocity
+        values at :math:`x`-staggered-cell centroids
+    :type fc: xp.array
+    :param xc: :math:`x` coordinates of the staggered-cell centroids (size :math:`n_x`)
+    :type xc: xp.array
+    :param xcc: :math:`x` coordinates of the faces (size :math:`n_x - 1`)
+    :type xcc: xp.array
+    """
+
+    def _interp(fs, xs, x):
+        r"""
+        :param fs: :math:`\{f_{0}, f_{1}, f_{2}\}`. The first value is the
+            "far upwind" one, the middle value is the "upwind" one, and the third value
+            is the "downwind" one. So, for a face at :math:`x_{j+1/2}` with :math:`f_j > 0`
+            we have :math:`\{f_{j-1}, f_{j}, f_{j+1}\}`. For face :math:`x_{j-1/2}` with
+            :math:`f_j < 0`, we have :math:`\{f_{j+1}, f_{j}, f_{j-1}\}`.
+        :param xs: :math:`\{x_{0}, x_{1}, x_{2}\}` (:math:`x`-coordinates of :math:`f_i`.)
+        :param x: evaluation points
         """
-        Evaluate derivative (slope) at x_eval points.
+        xjm1, xj, xjp1 = xs
+        fjm1, fj, fjp1 = fs
 
-        Parameters
-        ----------
-        x_eval : array-like of shape (k,)
+        Ljm1 = (x - xj) * (x - xjp1) / ((xjm1 - xj) * (xjm1 - xjp1))
+        Ljp1 = (x - xj) * (x - xjm1) / ((xjp1 - xj) * (xjp1 - xjm1))
+        s = (xjp1 - xj) / (xj - xjm1)
+        num, den = (fj - fjm1), (fjp1 - fj)
+        num_is_zero, den_is_zero = xp.abs(num) < 1e-12, xp.abs(den) < 1e-12
+        r = xp.divide(
+            num * s[None, :], den, out=xp.zeros_like(num), where=~den_is_zero
+        )
+        r[:, :] = xp.where(den_is_zero & ~num_is_zero, 1e10, r)
+        phi = 2 * (Ljm1[None, :] - r * (Ljp1 / s)[None, :])
 
-        Returns
-        -------
-        dy_dx : array of shape (n, k)
-        """
-        x_eval = xp.asarray(x_eval)
-        indices = xp.searchsorted(self.x, x_eval) - 1
-        indices = xp.clip(indices, 0, self.m - 2)
+        twrb = 2 * r * ((x - xj) / (xjp1 - xj))[None, :]
+        twos = 2 * xp.ones_like(phi)
+        phi = xp.maximum(0 * twos, xp.minimum(twrb, phi, twos))
 
-        return self.a[:, indices]
+        return fj + 0.5 * phi * (fjp1 - fj)
+
+    xjm1, xj, xjp1 = xc[:-2], xc[1:-1], xc[2:]
+    fjm1, fj, fjp1 = fc[:, :-2], fc[:, 1:-1], fc[:, 2:]
+    f_rgw = _interp([fjm1, fj, fjp1], [xjm1, xj, xjp1], xcc[1:])
+    f_lgw = _interp([fjp1, fj, fjm1], [xjp1, xj, xjm1], xcc[:-1])
+
+    f_rgw = xp.concatenate((fc[:, 0][:, None], f_rgw), axis=-1)
+    f_lgw = xp.concatenate((f_lgw, fc[:, -1][:, None]), axis=-1)
+    cp = xp.ones_like(f_rgw)
+    cm = xp.ones_like(f_rgw)
+    cp[f_upw <= 0] = 0.0
+    cm[f_upw > 0] = 0.0
+
+    return cp * f_rgw + cm * f_lgw

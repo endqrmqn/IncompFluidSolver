@@ -13,10 +13,17 @@ Re = 40
 # Define the spatial domain
 # discretized with 500 cells in the x direction and
 # 250 in the y direction
-x0, x1 = -10, 30
-y0, y1 = -15, 15
-nx, ny = 1000, 750
-mesh = ibfs.Mesh(x0, x1, nx, y0, y1, ny)
+xvec = xp.array([-10, -5, -2.5, 2.5, 6, 12, 24, 48])
+dxvec = xp.array([0.2, 0.1, 0.04, 0.06, 0.08, 0.1, 0.2])
+yvec = xp.array([-30, -20, -10, -2.5, 0])
+dyvec = xp.array([0.4, 0.1, 0.08, 0.04])
+# xvec = xp.array([-10, 30])
+# dxvec = xp.array([0.04])
+# yvec = xp.array([-10, 10])
+# dyvec = xp.array([0.04])
+
+
+mesh = ibfs.Mesh(xvec, dxvec, yvec, dyvec, False, True)
 
 
 # Define the boundary conditions. Zero neumann everywhere,
@@ -61,11 +68,38 @@ spops = ibfs.SpatialOperators(Re, mesh, bcs, False)
 # Instantiate the ImmersedBody class to account for the
 # presence of a cylinder with diameter = 1 and center
 # at (0, 0)
-ib = ibfs.ImmersedBody(*make_circle(1.0, mesh.d), spops)
+ib = ibfs.ImmersedBody(*make_circle(1.0, xp.min(mesh.dx)), spops)
 
+# %%
 save_path = "data/"
 q = xp.load(save_path + "snapshot.npy")
 
+
+ibfs.vector_to_fields(0.0, Q[:, -1], mesh, bcs)
+Xu, Yu, Xv, Yv, _, _ = ibfs.generate_meshgrids(mesh, False)
+
+
+fig, ax = plt.subplots(nrows=1, ncols=2)
+ax[0].contourf(Xu, Yu, mesh.u_ext, cmap="inferno", levels=200)
+ax[0].fill(ib.xi, ib.eta, "k")
+ax[0].set_aspect("equal")
+ax[0].set_xlabel(r"$x/L$")
+ax[0].set_ylabel(r"$y/L$")
+ax[0].set_title(r"$u$ velocity")
+
+ax[1].contourf(Xv, Yv, mesh.v_ext, cmap="bwr", levels=200)
+ax[1].fill(ib.xi, ib.eta, "k")
+ax[1].set_aspect("equal")
+ax[1].set_xlabel(r"$x/L$")
+ax[1].set_yticks([])
+ax[1].set_title(r"$v$ velocity")
+
+plt.tight_layout()
+
+plt.show()
+
+
+# %%
 
 U, V, X, Y = ibfs.interpolate_to_nodes(0.0, q, mesh, bcs)
 

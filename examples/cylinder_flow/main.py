@@ -13,10 +13,23 @@ Re = 40
 # Define the spatial domain
 # discretized with 500 cells in the x direction and
 # 250 in the y direction
-x0, x1 = -10, 30
-y0, y1 = -15, 15
-nx, ny = 1000, 750
-mesh = ibfs.Mesh(x0, x1, nx, y0, y1, ny)
+# xvec = xp.array([-10, -5, -2.5, 2.5, 6, 12, 24, 48])
+# dxvec = xp.array([0.2, 0.1, 0.04, 0.08, 0.15, 0.2, 0.5])
+# yvec = xp.array([-30, -20, -10, -2.5, 0])
+# dyvec = xp.array([0.5, 0.25, 0.1, 0.04])
+xvec = xp.array([-10, -5, -2.5, 2.5, 6, 12, 24, 36, 48])
+dxvec = xp.array([0.16, 0.08, 0.04, 0.06, 0.08, 0.16, 0.32, 0.64])
+yvec = xp.array([-30, -20, -10, -5, -2.5, 0])
+dyvec = xp.array([0.64, 0.32, 0.16, 0.08, 0.04])
+
+# xvec = xp.array([-5, 15])
+# dxvec = xp.array([0.04])
+# yvec = xp.array([-5, 0])
+# dyvec = xp.array([0.04])
+
+mesh = ibfs.Mesh(xvec, dxvec, yvec, dyvec, False, True)
+
+print(len(mesh.x), len(mesh.y))
 
 
 # Define the boundary conditions. Zero neumann everywhere,
@@ -58,14 +71,15 @@ bcs = [bcuvel, bcvvel]
 # right-hand side of the Navier-Stokes equation
 spops = ibfs.SpatialOperators(Re, mesh, bcs, False)
 
+# %%
 # Instantiate the ImmersedBody class to account for the
 # presence of a cylinder with diameter = 1 and center
 # at (0, 0)
-ib = ibfs.ImmersedBody(*make_circle(1.0, mesh.d), spops)
+ib = ibfs.ImmersedBody(*make_circle(1.0, xp.min(mesh.dx)), spops)
 
 # Instantiate the TimeStepper class to evolve the system
 # We integrate with a fixed delta t = 1e-2
-dt = 1e-2
+dt = 1e-3
 tstep = ibfs.TimeStepper(dt, spops, ib, scheme="RK2")
 
 # Run the time stepper from t = 0 to t = 100 with

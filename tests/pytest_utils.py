@@ -22,7 +22,7 @@ def evaluate_fun_and_derivatives(X, Y, fun, xp):
 
 def analytical_functions():
     r"""Create analytical functions for velocities and pressure."""
-    alpha, beta = 10, 20
+    alpha, beta = 10, 30
     pfun = lambda X, Y: 1 - alpha * torch.exp(
         -beta * ((Y - 0.0) ** 4 + (X - 0.0) ** 2)
     )
