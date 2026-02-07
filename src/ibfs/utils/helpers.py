@@ -63,27 +63,17 @@ def generate_meshgrids(
 
     :param output_torch: outputs the meshgrids as torch tensors if :code:`True`,
         and as numpy/cupy arrays otherwise. (Torch is often used in tests/ for its
-        autodiff capabilities.)
+        autodiff functionalities.)
     :type output_torch: Optional[bool], defaults to :code:`False`
 
     :rtype: List[xp.array] | List[torch.tensor]
     """
 
     # Meshgrids for the u velocity field
-    # xu = mesh.x
-    # yub = 2 * mesh.yu[0] - mesh.yu[1]
-    # yut = 2 * mesh.yu[-1] - mesh.yu[-2]
-    # yu = xp.concatenate(([yub], mesh.yu, [yut]))
-    # Xu, Yu = xp.meshgrid(xu, yu)
     Xu, Yu = xp.meshgrid(mesh.xu, mesh.yu)
     assert Xu.shape == mesh.u_ext.shape
     assert Yu.shape == mesh.u_ext.shape
     # Meshgrids for the v velocity field
-    # xvl = 2 * mesh.xv[0] - mesh.xv[1]
-    # xvr = 2 * mesh.xv[-1] - mesh.xv[-2]
-    # xv = xp.concatenate(([xvl], mesh.xv, [xvr]))
-    # yv = mesh.y
-    # Xv, Yv = xp.meshgrid(xv, yv)
     Xv, Yv = xp.meshgrid(mesh.xv, mesh.yv)
     assert Xv.shape == mesh.v_ext.shape
     assert Yv.shape == mesh.v_ext.shape
@@ -100,42 +90,25 @@ def generate_meshgrids(
         return xp_tensors
 
 
-def centroids_to_faces(fc, xc, xf):
-    # Interpolate field fc from centroids to cell faces
-    idces = [-1, 0, 1]
-    ff = xp.zeros_like(fc[:, 1:-1])
-    for idx, i in enumerate(idces):
-        xi = xp.roll(xc, i)[1:-1]
-        pi = xp.ones_like(xi)
-        for j in xp.delete(idces, idx):
-            xj = xp.roll(xc, j)[1:-1]
-            pi *= (xf[1:-1] - xj) / (xi - xj)
-        ff += xp.roll(fc, i, axis=-1)[:, 1:-1] * pi[None, :]
-    return xp.concatenate(
-        (fc[:, 0].reshape(-1, 1), ff, fc[:, -1].reshape(-1, 1)),
-        axis=-1,
-    )
-
-
 def quadratic_interpolation(fc, xc, xcc, deriv=False):
     r"""
-    Given the :math:`u` velocity stored at :math:`x`-staggered cell centroids, we compute
-    the velocity :math:`u`at the faces of the :math:`x`-staggered cells (i.e., the grid
-    cell centers). (Notice that
-    for a uniform grid, the centroids are located at grid cell faces) The reconstruction is achieved with
-    quadratic interpolation. In particular, at face :math:`x_{j+1/2}` we have
+    Interpolate the field :math:`f` stored at locations :math:`x` to some target 
+    coordinates :math:`\tilde{x}` using second-order Lagrange interpolation
 
     .. math::
+        
+        (\tilde{x}) = \sum_{i=j-1}^{j+1}f_i(x)
+        \prod_{\substack{k=j-1\\k\neq i}}^{j+1}\frac{\tilde{x}-x_k}{x_j - x_k}
 
-        u_{j+1/2} = \sum_{i=j-1}^{j+1}l_i(x)\prod_{\substack{k=j-1\\k\neq i}}^{j+1}\frac{x-x_k}{x_j - x_k}
-
-    :param fc: array of size :math:`n_y \times n_x` corresponding to streamwise velocity
-        values at :math:`x`-staggered-cell centroids
+    :param fc: two-dimensional array containing the field :math:`f`. The interpolation
+        is performed along the second axis of the array.
     :type fc: xp.array
-    :param xc: :math:`x` coordinates of the staggered-cell centroids (size :math:`n_x`)
+    :param xc: :math:`x` coordinates at which the field is stored
     :type xc: xp.array
-    :param xcc: :math:`x` coordinates of the faces (size :math:`n_x - 1`)
+    :param xcc: target coordinates
     :type xcc: xp.array
+
+
     """
 
     def _interp_(fs, xs, x, deriv):
@@ -169,7 +142,7 @@ def quadratic_interpolation(fc, xc, xcc, deriv=False):
     same_length = True if len(xcc) == len(xc) else False
     xtarget = xcc[1:-1] if same_length else xcc[1:]
     f_rgw, df_r = _interp_([fjm1, fj, fjp1], [xjm1, xj, xjp1], xtarget, deriv)
-    
+
     if not same_length:
         f_lgw, df_l = _interp_(
             [fjp1[:, :1], fj[:, :1], fjm1[:, :1]],
@@ -232,12 +205,12 @@ def compute_limited_face_values(fc, xc, xcc, f_upw):
         Ljp1 = (x - xj) * (x - xjm1) / ((xjp1 - xj) * (xjp1 - xjm1))
         s = (xjp1 - xj) / (xj - xjm1)
         num, den = (fj - fjm1), (fjp1 - fj)
-        num_is_zero, den_is_zero = xp.abs(num) < 1e-12, xp.abs(den) < 1e-12
+        num_is_zero, den_is_zero = xp.abs(num) < 1e-15, xp.abs(den) < 1e-15
         r = xp.divide(
             num * s[None, :], den, out=xp.zeros_like(num), where=~den_is_zero
         )
         r[:, :] = xp.where(den_is_zero & ~num_is_zero, 1e10, r)
-        phi = 2 * (Ljm1[None, :] - r * (Ljp1 / s)[None, :])
+        phi = 2 * (Ljp1[None, :] - r * (Ljm1 / s)[None, :])
 
         twrb = 2 * r * ((x - xj) / (xjp1 - xj))[None, :]
         twos = 2 * xp.ones_like(phi)

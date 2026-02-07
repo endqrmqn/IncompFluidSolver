@@ -59,85 +59,17 @@ class SpatialOperators:
     def evaluate_momentum_integral(
         self, u, v, xu, yu, xv, yv, xc, yc, x, y, dx, dy, f
     ):
-        def centroids_to_faces(fc, xc, xf):
-            # Interpolate field fc from centroids to cell faces
-            idces = [-1, 0, 1]
-            ff = xp.zeros_like(fc[:, 1:-1])
-            for idx, i in enumerate(idces):
-                xi = xp.roll(xc, i)[1:-1]
-                pi = xp.ones_like(xi)
-                for j in xp.delete(idces, idx):
-                    xj = xp.roll(xc, j)[1:-1]
-                    pi *= (xf[1:-1] - xj) / (xi - xj)
-                ff += xp.roll(fc, i, axis=-1)[:, 1:-1] * pi[None, :]
-            return xp.concatenate(
-                (fc[:, 0].reshape(-1, 1), ff, fc[:, -1].reshape(-1, 1)),
-                axis=-1,
-            )
-
-        def centroids_to_cell_centers(fc, xc, xcc, deriv=False):
-
-            # Interpolate fc from centroids to cell centers
-            idces = [-1, 0, 1]
-            ff = xp.zeros_like(fc[:, 1:-1])
-            df = xp.zeros_like(ff) if deriv else 0
-            for idx, i in enumerate(idces):
-                xi = xp.roll(xc, i)[1:-1]
-                pi_ff = xp.ones_like(xi)
-                for j in xp.delete(idces, idx):
-                    xj = xp.roll(xc, j)[1:-1]
-                    pi_ff *= (xcc[:-1] - xj) / (xi - xj)
-                ff += xp.roll(fc, i, axis=-1)[:, 1:-1] * pi_ff[None, :]
-                if deriv:
-                    factor = xp.zeros_like(xi)
-                    for j in xp.delete(idces, idx):
-                        xj = xp.roll(xc, j)[1:-1]
-                        factor += 1.0 / (xcc[:-1] - xj)
-                    pi_df = pi_ff * factor
-                    df += xp.roll(fc, i, axis=-1)[:, 1:-1] * pi_df[None, :]
-
-            idces = [-3, -2, -1]
-            fl = xp.zeros_like(ff[:, -1])
-            dfl = xp.zeros_like(df[:, -1]) if deriv else 0
-            for idx, i in enumerate(idces):
-                pi_fl = xp.prod(
-                    [
-                        (xcc[-1] - xc[j]) / (xc[i] - xc[j])
-                        for j in xp.delete(idces, idx)
-                    ]
-                )
-                fl += fc[:, i] * pi_fl
-                if deriv:
-                    factor = xp.sum(
-                        [
-                            1.0 / (xcc[-1] - xc[j])
-                            for j in xp.delete(idces, idx)
-                        ]
-                    )
-                    dfl += fc[:, i] * pi_fl * factor
-
-            if not deriv:
-                return xp.concatenate((ff, fl[:, None]), axis=-1)
-            else:
-                return (
-                    xp.concatenate((ff, fl[:, None]), axis=-1),
-                    xp.concatenate((df, dfl[:, None]), axis=-1),
-                )
-
+        
         momn = xp.zeros_like(u[1:-1, 1:-1])
-
         # Streamwise advection term (interpolate the u velocity to
         # the cell centers so that we can compute fluxes)
         uc = compute_limited_face_values(u, xu, xc, u[:, :-1])
-        # uc, _ = quadratic_interpolation(u, xu, xc)
         momn -= (uc[1:-1, 1:] ** 2 - uc[1:-1, :-1] ** 2) * dy[:, None]
         # Wall-normal advection term (interpolate u and v velocities to
         # the corners of the x-staggered control volumes)
         uc, ducx = quadratic_interpolation(u, xu, xc, deriv=True)
         vcf, _ = quadratic_interpolation(v.T, yv, y)
         vcf = vcf[1:-1, :].T
-        # ucf, _ = quadratic_interpolation(uc.T, yu, y)
-        # ucf = ucf.T
         ucf = compute_limited_face_values(uc.T, yu, y, vcf.T).T
         uv = ucf * vcf
         momn -= (
@@ -217,13 +149,6 @@ class SpatialOperators:
     def evaluate_divergence_integral(self) -> xp.array:
         r"""
         Compute :math:`\int_{\mathcal{V}_{i,j}} \nabla\cdot\mathbf{u}\,d V_{i,j}`.
-        Velocities are interpolated from cell centroids to cell faces according to the formula
-
-        .. math::
-
-            f(x) = \frac{\left(f_{j+1} - f_{j}\right)}{\left(x_{j+1} - x_{j}\right)}\left(x - x_j\right) + f_j,
-
-        where :math:`f_j` and :math:`x_j` are the values and coordinates at the cell centroids.
 
         :rtype: xp.array
         """

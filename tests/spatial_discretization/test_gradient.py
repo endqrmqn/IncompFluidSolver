@@ -13,10 +13,10 @@ def test_gradient(domain_and_Reynolds, grid_sizes):
 
     xvec, yvec, spacings, Re = domain_and_Reynolds
     dxs, dys = spacings
-    dxs /= 10
-    dys /= 10
+    dxs /= 5
+    dys /= 5
 
-    niter = 3
+    niter = 5
     error = xp.zeros(niter)
     spacings = error.copy()
 
@@ -46,10 +46,9 @@ def test_gradient(domain_and_Reynolds, grid_sizes):
         grad = nsop.M.dot(
             xp.concatenate((dp_dx.reshape(-1), dp_dy.reshape(-1)))
         )
-
+        
         error[iter] = xp.max(xp.abs(grad_h - grad))
         spacings[iter] = xp.min(dxs)
 
     order, _ = xp.polyfit(xp.log(spacings), xp.log(error), 1)
-    print(f"Order = {order}")
-    assert xp.abs(order - 4) / 4 < 1e-1 and error[-1] < 1e-8
+    assert xp.abs(order - 4) / 4 < 1e-2 and error[-1] < 1e-8

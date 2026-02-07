@@ -17,17 +17,20 @@ Re = 40
 # dxvec = xp.array([0.2, 0.1, 0.04, 0.08, 0.15, 0.2, 0.5])
 # yvec = xp.array([-30, -20, -10, -2.5, 0])
 # dyvec = xp.array([0.5, 0.25, 0.1, 0.04])
-xvec = xp.array([-10, -5, -2.5, 2.5, 6, 12, 24, 36, 48])
-dxvec = xp.array([0.16, 0.08, 0.04, 0.06, 0.08, 0.16, 0.32, 0.64])
-yvec = xp.array([-30, -20, -10, -5, -2.5, 0])
-dyvec = xp.array([0.64, 0.32, 0.16, 0.08, 0.04])
+# xvec = xp.array([-10, -5, -2.5, 2.5, 6, 12, 24, 36, 48])
+# dxvec = xp.array([0.16, 0.08, 0.04, 0.06, 0.08, 0.16, 0.32, 0.64])
+# yvec = xp.array([-30, -10, -5, -2.5, 0])
+# dyvec = xp.array([0.64, 0.16, 0.08, 0.04])
+
+xvec = xp.array([-30, -20, -10, -5, -2.5, 0])
+dxvec = xp.array([1, 0.5, 0.16, 0.08, 0.04])
 
 # xvec = xp.array([-5, 15])
 # dxvec = xp.array([0.04])
 # yvec = xp.array([-5, 0])
 # dyvec = xp.array([0.04])
 
-mesh = ibfs.Mesh(xvec, dxvec, yvec, dyvec, False, True)
+mesh = ibfs.Mesh(xvec, dxvec, xvec, dxvec, True, True)
 
 print(len(mesh.x), len(mesh.y))
 
@@ -79,14 +82,14 @@ ib = ibfs.ImmersedBody(*make_circle(1.0, xp.min(mesh.dx)), spops)
 
 # Instantiate the TimeStepper class to evolve the system
 # We integrate with a fixed delta t = 1e-2
-dt = 1e-3
+dt = 3e-3
 tstep = ibfs.TimeStepper(dt, spops, ib, scheme="RK2")
 
 # Run the time stepper from t = 0 to t = 100 with
 # initial condition q0 = 0
 q0 = xp.ones(xp.prod(mesh.u_int.shape) + xp.prod(mesh.v_int.shape))
 q0[xp.prod(mesh.u_int.shape) :] = 0.0
-Q, tsave = tstep.solve(0.0, 5000 * dt, 100, q0)
+Q, tsave = tstep.solve(0.0, 5000 * dt, 100, Q[:, -1])
 
 save_path = "data/"
 os.makedirs(save_path, exist_ok=True)

@@ -1,4 +1,5 @@
 import numpy as xp
+import scipy as sp
 import ibfs
 import matplotlib.pyplot as plt
 
@@ -79,20 +80,37 @@ ibfs.vector_to_fields(0.0, Q[:, -1], mesh, bcs)
 Xu, Yu, Xv, Yv, _, _ = ibfs.generate_meshgrids(mesh, False)
 
 
+i = 8
 fig, ax = plt.subplots(nrows=1, ncols=2)
 ax[0].contourf(Xu, Yu, mesh.u_ext, cmap="inferno", levels=200)
-ax[0].fill(ib.xi, ib.eta, "k")
+ax[0].pcolormesh(Xu[::i, ::i], Yu[::i, ::i], xp.zeros_like(Xu[::i, ::i]), 
+               edgecolors='k', 
+               facecolor='none', 
+               linewidth=0.5, 
+               alpha=0.1,  # Keep it faint
+               zorder=2)
+ax[0].fill(ib.xi, ib.eta, "w")
 ax[0].set_aspect("equal")
 ax[0].set_xlabel(r"$x/L$")
 ax[0].set_ylabel(r"$y/L$")
 ax[0].set_title(r"$u$ velocity")
+ax[0].set_xlim(-25, 25)
+ax[0].set_ylim(-25, 25)
 
 ax[1].contourf(Xv, Yv, mesh.v_ext, cmap="bwr", levels=200)
+ax[1].pcolormesh(Xu[::i, ::i], Yu[::i, ::i], xp.zeros_like(Xu[::i, ::i]), 
+               edgecolors='k', 
+               facecolor='none', 
+               linewidth=0.5, 
+               alpha=0.1,  # Keep it faint
+               zorder=2)
 ax[1].fill(ib.xi, ib.eta, "k")
 ax[1].set_aspect("equal")
 ax[1].set_xlabel(r"$x/L$")
 ax[1].set_yticks([])
 ax[1].set_title(r"$v$ velocity")
+ax[1].set_xlim(-25, 25)
+ax[1].set_ylim(-25, 25)
 
 plt.tight_layout()
 
@@ -100,8 +118,26 @@ plt.show()
 
 
 # %%
+def interp2d(X, Y, U, Xt, Yt):
+    
+    interp_ux = sp.interpolate.interp1d(X[0,], U, axis=-1, kind='cubic')
+    U_ = interp_ux(Xt[0,])
+    interp_uy = sp.interpolate.interp1d(Y[:, 0], U_, axis=0, kind='cubic')
+    return interp_uy(Yt[:, 0])
+    
+U_, V_, X, Y = ibfs.interpolate_to_nodes(0.0, q, mesh, bcs)
 
-U, V, X, Y = ibfs.interpolate_to_nodes(0.0, q, mesh, bcs)
+xuni = xp.linspace(-2, 4, num=100)
+yuni = xp.linspace(-2.5, 2.5, num=100)
+
+Xt, Yt = xp.meshgrid(xuni, yuni)
+
+U = interp2d(X, Y, U_, Xt, Yt)
+V = interp2d(X, Y, V_, Xt, Yt)
+
+#%%
+
+
 
 spx = xp.arange(0.5, 3, 3.5 / 10)
 spy = xp.arange(-1.5, 1.5, 3 / 10)
@@ -109,13 +145,14 @@ spx, spy = xp.meshgrid(spx, spy)
 spx = spx.reshape(-1).reshape(1, -1)
 spy = spy.reshape(-1).reshape(1, -1)
 
+idx_ = 50
 start_points = xp.concatenate((spx, spy), axis=0)
 plt.figure()
 plt.streamplot(
-    X[310:-310, 40:-600],
-    Y[310:-310, 40:-600],
-    U[310:-310, 40:-600],
-    V[310:-310, 40:-600],
+    Xt,
+    Yt,
+    U,
+    V,
     start_points=start_points.T,
     maxlength=2000,
     density=9,
@@ -137,11 +174,19 @@ ax.set_title(r"Steady-state streamlines at $Re = 40$")
 plt.tight_layout()
 plt.show()
 
+#%%
 
 omega, _, _ = ibfs.compute_vorticity(0.0, q, mesh, bcs)
 
+file = xp.loadtxt('data/taira_colonius_wake.csv', delimiter=',')
+
+radius = 0.5
+mask = (X**2 + Y**2) < radius**2
+omega_masked = xp.where(mask, xp.nan, omega)
+
 plt.figure()
-plt.contour(X, Y, omega, cmap="bwr", levels=xp.arange(-3, 3 + 0.4, 0.4))
+plt.contour(X, Y, omega_masked, colors='gray', levels=xp.arange(-3, 3 + 0.4, 0.4), linestyles='solid')
+plt.plot(file[:, 0], file[:, 1], 'ro', markersize=1.5, label=r'Taira & Colonius, JCP, 2007')
 plt.fill(ib.xi, ib.eta, color="k")
 ax = plt.gca()
 ax.set_ylim([-2.5, 2.5])
@@ -150,6 +195,10 @@ ax.set_xlabel(r"$x/D$")
 ax.set_ylabel(r"$y/D$")
 ax.set_title(r"Steady-state vorticity contours at $Re = 40$")
 ax.set_aspect("equal")
-plt.colorbar()
+# plt.colorbar()
+plt.legend()
 plt.tight_layout()
 plt.show()
+
+
+#%%

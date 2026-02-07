@@ -12,10 +12,10 @@ def test_divergence(domain_and_Reynolds):
 
     xvec, yvec, spacings, Re = domain_and_Reynolds
     dxs, dys = spacings
-    dxs /= 10
-    dys /= 10
+    dxs /= 5
+    dys /= 5
 
-    niter = 3
+    niter = 5
     error = xp.zeros(niter)
     spacings = xp.zeros(niter)
 
@@ -44,5 +44,4 @@ def test_divergence(domain_and_Reynolds):
         spacings[iter] = xp.min(dxs)
 
     order, _ = xp.polyfit(xp.log(spacings), xp.log(error), 1)
-    print(f"Order = {order}")
     assert xp.abs(order - 4) / 4 < 1e-2 and error[-1] < 1e-7

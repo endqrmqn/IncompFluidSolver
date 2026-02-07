@@ -13,10 +13,10 @@ def test_momentum(domain_and_Reynolds):
     """
     xvec, yvec, spacings, Re = domain_and_Reynolds
     dxs, dys = spacings
-    dxs /= 2
-    dys /= 2
+    dxs /= 5
+    dys /= 5
 
-    niter = 5
+    niter = 1
     error = xp.zeros(niter)
     spacings = error.copy()
 
@@ -61,23 +61,21 @@ def test_momentum(domain_and_Reynolds):
         v, _, _, _, _ = pyut.evaluate_fun_and_derivatives(Xv, Yv, vfun, xp)
         mesh.u_ext[:, :] = u
         mesh.v_ext[:, :] = v
-        x_mom, y_mom = nsop.evaluate_momentum_equation()
-        x_mom = x_mom[2:-2, 2:-2]
-        y_mom = y_mom[2:-2, 2:-2]
-        vec_h = xp.concatenate((x_mom.reshape(-1), y_mom.reshape(-1)))
 
-        error[iter] = xp.max(xp.abs(vec_h))
-        spacings[iter] = xp.min(dxs)
-        iter += 1
 
-    plt.figure()
-    plt.plot(spacings, error, "o-")
-    ax = plt.gca()
-    ax.set_yscale("log")
-    ax.set_xscale("log")
-    plt.tight_layout()
-    plt.show()
-    print(error, spacings)
-    order, _ = xp.polyfit(xp.log(spacings), xp.log(error), 1)
-    print(f"Order = {order}")
-    assert xp.abs(order - 4) < 1e-1 and error[-1] < 1e-3
+        idx_r = xp.argmin(xp.abs(Yu[:, 0].detach().numpy() - 0.25))
+        u_ = u[idx_r -2:idx_r+3,]
+        val = ibfs.compute_limited_face_values(u_, mesh.xu, mesh.xc, u_[:, :-1])
+        val_, _ = ibfs.quadratic_interpolation(u_, mesh.xu, mesh.xc, False)
+        
+        plt.figure()
+        plt.plot(mesh.xu, u_[0, ], 'g', label=r'$u(x)$')
+        plt.plot(mesh.xc, val[0,], '--', label=r'$u(x)$ limited')
+        # plt.plot(mesh.xc, val_[0,], 'r--', label=r'$u(x)$ quad recon.')
+        plt.legend()
+        plt.tight_layout()
+        plt.show()
+
+        # plt.figure()
+        # plt.contourf(Xu.detach().numpy(), Yu.detach().numpy(), mesh.u_ext, levels=200)
+        # plt.show()

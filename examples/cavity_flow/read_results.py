@@ -7,8 +7,8 @@ Re = 1000
 
 # Define the spatial domain (a box of size 1 x 1)
 # discretized with 200 cells in the x and y directions
-xvec = xp.array([-0.5, 0])
-dxvec = xp.array([0.005])
+xvec = xp.array([-0.5, -0.4, -0.25, 0])
+dxvec = xp.array([0.005, 0.01, 0.015])
 # xvec = xp.array([-0.5, 0.5])
 # dxvec = xp.array([0.005])
 

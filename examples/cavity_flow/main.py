@@ -2,12 +2,13 @@ import numpy as xp
 import ibfs
 import os
 
+#%%
 Re = 1000
 
 # Define the spatial domain (a box of size 1 x 1)
 # discretized with 200 cells in the x and y directions
-xvec = xp.array([-0.5, 0])
-dxvec = xp.array([0.005])
+xvec = xp.array([-0.5, -0.4, -0.25, 0])
+dxvec = xp.array([0.005, 0.01, 0.015])
 # xvec = xp.array([-0.5, 0.5])
 # dxvec = xp.array([0.005])
 
@@ -66,7 +67,7 @@ tstep = ibfs.TimeStepper(dt, spops, None, scheme="RK2")
 # Run the time stepper from t = 0 to t = 100 with
 # initial condition q0 = 0
 q0 = xp.zeros(xp.prod(mesh.u_int.shape) + xp.prod(mesh.v_int.shape))
-Q, tsave = tstep.solve(0.0, 20, 500, Q[:, -1])
+Q, tsave = tstep.solve(0.0, 30, 500, Q[:, -1])
 
 save_path = "data/"
 os.makedirs(save_path, exist_ok=True)
@@ -93,3 +94,40 @@ ax[1].set_title(r"$v$ velocity")
 plt.tight_layout()
 
 plt.show()
+
+#%%
+omega, Xw, Yw = ibfs.compute_vorticity(0.0, Q[:, -1], mesh, bcs)
+
+vmax = xp.max(omega) / 3
+vmin = -vmax
+
+plt.figure()
+plt.contourf(Xw, Yw, omega, levels=200, vmax=vmax, vmin=vmin, cmap='bwr')
+ax = plt.gca()
+ax.set_aspect("equal")
+ax.set_xlabel(r"$x/L$")
+ax.set_ylabel(r"$y/L$")
+
+plt.tight_layout()
+
+plt.show()
+
+
+plt.figure()
+plt.contour(Xw, Yw, omega, levels=xp.arange(-3,4,1), cmap='bwr')
+ax = plt.gca()
+ax.set_aspect("equal")
+ax.set_xlabel(r"$x/L$")
+ax.set_ylabel(r"$y/L$")
+
+plt.tight_layout()
+
+plt.show()
+
+
+
+
+
+
+
+

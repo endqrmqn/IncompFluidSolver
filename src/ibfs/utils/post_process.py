@@ -1,6 +1,6 @@
 import numpy as xp
 from typing import Tuple, TYPE_CHECKING
-from .helpers import vector_to_fields
+from .helpers import vector_to_fields, quadratic_interpolation
 
 if TYPE_CHECKING:
     from ..spatial_discretization.mesh import Mesh
@@ -27,16 +27,14 @@ def compute_vorticity(
     :rtype: Tuple[xp.array, xp.array, xp.array]
     """
     vector_to_fields(t, q, mesh, bcs)
-    dvdx = (mesh.v_ext[:, 1:] - mesh.v_ext[:, :-1]) / mesh.d
-    dudy = (mesh.u_ext[1:, :] - mesh.u_ext[:-1, :]) / mesh.d
-    omeg = dvdx - dudy
 
-    x, y = mesh.xu, mesh.yv
-    x = xp.concatenate(([x[0] - mesh.d], x, [x[-1] + mesh.d]))
-    y = xp.concatenate(([y[0] - mesh.d], y, [y[-1] + mesh.d]))
-    Xw, Yw = xp.meshgrid(x, y)
+    u = mesh.u_ext
+    v = mesh.v_ext
+    _, dudy = quadratic_interpolation(u.T, mesh.yu, mesh.y, deriv=True)
+    _, dvdx = quadratic_interpolation(v, mesh.xv, mesh.x, deriv=True)
+    Xw, Yw = xp.meshgrid(mesh.x, mesh.y)
 
-    return omeg, Xw, Yw
+    return dvdx - dudy.T, Xw, Yw
 
 
 def interpolate_to_nodes(
@@ -56,13 +54,11 @@ def interpolate_to_nodes(
 
     :rtype: Tuple[xp.array, xp.array, xp.array]
     """
-    vector_to_fields(t, q, mesh, bcs)
-    u = (mesh.u_ext[1:, :] + mesh.u_ext[:-1, :]) / 2
-    v = (mesh.v_ext[:, 1:] + mesh.v_ext[:, :-1]) / 2
+    vector_to_fields(t, q, mesh, bcs) 
+    u = mesh.u_ext
+    v = mesh.v_ext
+    un, _ = quadratic_interpolation(u.T, mesh.yu, mesh.y, deriv=False)
+    vn, _ = quadratic_interpolation(v, mesh.xv, mesh.x, deriv=False)
+    Xw, Yw = xp.meshgrid(mesh.x, mesh.y)
 
-    x, y = mesh.xu, mesh.yv
-    x = xp.concatenate(([x[0] - mesh.d], x, [x[-1] + mesh.d]))
-    y = xp.concatenate(([y[0] - mesh.d], y, [y[-1] + mesh.d]))
-    X, Y = xp.meshgrid(x, y)
-
-    return u, v, X, Y
+    return un.T, vn, Xw, Yw
